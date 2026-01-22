@@ -1,0 +1,51 @@
+# Multi-Model Configuration
+# Allows different entities to use different language models
+
+name: multi_model
+
+# Model registry - define all available models
+model_registry:
+  gpt4:
+    provider: openai
+    model_name: gpt-4-turbo
+    parameters:
+      temperature: 0.7
+      max_tokens: 1024
+    api:
+      api_key: ${oc.env:OPENAI_API_KEY,}
+      timeout: 60
+      max_retries: 3
+
+  claude:
+    provider: anthropic
+    model_name: claude-3-5-sonnet-20241022
+    parameters:
+      temperature: 0.7
+      max_tokens: 1024
+    api:
+      api_key: ${oc.env:ANTHROPIC_API_KEY,}
+      timeout: 60
+      max_retries: 3
+
+  ollama_llama:
+    provider: ollama
+    model_name: llama3.1:8b
+    parameters:
+      temperature: 0.7
+      max_tokens: 1024
+    api:
+      host: ${oc.env:OLLAMA_HOST,http://localhost:11434}
+      timeout: 120
+
+# Entity to model mapping
+# Maps entity names to model keys from the registry
+# Entities not listed will use the default_model
+entity_model_mapping:
+  # Example mappings - override these in your scenario config
+  # Alice: gpt4
+  # Bob: claude
+  # game_master: gpt4
+  _default_: gpt4
+
+# Default model for entities not in the mapping
+default_model: gpt4

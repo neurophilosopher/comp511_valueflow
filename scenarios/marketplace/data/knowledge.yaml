@@ -1,0 +1,62 @@
+# Marketplace Scenario Knowledge Base
+# This file contains static knowledge facts for different agent roles
+
+general:
+  - "The Grand Marketplace is the central trading hub of the region."
+  - "Trading hours are from dawn until dusk."
+  - "All transactions should be conducted with honesty and fairness."
+  - "The marketplace has operated for generations, with a strong tradition of fair dealing."
+  - "Prices are generally negotiable unless explicitly marked as fixed."
+  - "The auctioneer charges a standard commission on all auction sales."
+  - "Quality goods from reputable sellers command premium prices."
+  - "Reputation is currency in the marketplace - dishonest traders are shunned."
+  - "Disputes are settled by the auctioneer or marketplace authorities."
+  - "Counterfeit goods are strictly prohibited and may result in expulsion."
+
+buyer:
+  - "A wise buyer always inspects goods carefully before purchasing."
+  - "Comparing prices from multiple sellers often reveals better deals."
+  - "Negotiation is expected, but should be conducted respectfully."
+  - "Keeping track of spending against budget prevents overspending."
+  - "Rare and unique items may justify premium prices for collectors."
+  - "Building relationships with sellers can lead to preferential treatment."
+  - "Auctions can offer bargains, but also risk of overpaying in excitement."
+  - "Early morning often has the best selection before popular items sell."
+  - "Patience is a virtue - rushing purchases often leads to regret."
+  - "Understanding market trends helps identify good value."
+
+seller:
+  - "Presentation matters - well-displayed goods attract more buyers."
+  - "Honesty about item condition builds trust and repeat customers."
+  - "Knowing your minimum acceptable price prevents unprofitable sales."
+  - "Regular customers deserve appreciation and occasional discounts."
+  - "Watching competitor pricing helps maintain market position."
+  - "Storytelling about item history or craftsmanship adds perceived value."
+  - "Seasonal demand affects pricing - adjust inventory accordingly."
+  - "Bundle deals can move slow-selling items along with popular ones."
+  - "Quality over quantity often leads to better long-term profits."
+  - "Reputation for fair dealing attracts discerning buyers."
+
+auctioneer:
+  - "Neutrality between buyers and sellers is essential for trust."
+  - "Clear, loud announcements ensure all participants stay informed."
+  - "Fair access to bidding must be ensured for all participants."
+  - "Quick and decisive dispute resolution maintains auction flow."
+  - "Accurate record-keeping protects all parties in transactions."
+  - "Building excitement increases participation and final prices."
+  - "Knowing when to close bidding maximizes seller satisfaction."
+  - "Verifying buyer funds before accepting bids prevents complications."
+  - "Maintaining order during heated bidding is crucial."
+  - "Commission should be transparently calculated and communicated."
+
+market_rules:
+  - "All sales are final unless the item was misrepresented."
+  - "Payment must be rendered immediately upon winning an auction."
+  - "Sellers must disclose any known defects in their merchandise."
+  - "Physical altercations result in immediate expulsion from the marketplace."
+  - "No selling of prohibited goods (weapons, contraband, etc.)."
+  - "The marketplace authority's decisions are final in all disputes."
+  - "Theft is punishable by permanent ban and reported to authorities."
+  - "Respect the space and property of neighboring merchants."
+  - "No blocking of pathways that impede customer flow."
+  - "All merchants must maintain clean and safe stall areas."

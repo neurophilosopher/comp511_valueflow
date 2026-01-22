@@ -1,0 +1,48 @@
+# Game Theoretic Environment Configuration
+# For scenarios involving strategic interactions and scoring
+
+name: game_theoretic
+description: "Environment for game-theoretic scenarios with scoring"
+
+# World properties
+world:
+  time:
+    enabled: true
+    format: "Round {day}"
+    initial_day: 1
+    initial_time: ""
+
+  locations:
+    enabled: false
+
+# Game Master configuration
+game_master:
+  prefab: scoring_game_master
+  name: referee
+  observation_style: minimal
+  resolution_style: rule_based
+
+# Scoring system
+scoring:
+  enabled: true
+  # Initial score for all players
+  initial_score: 0
+  # Score display format
+  display_format: "{name}: {score} points"
+  # Track score history
+  track_history: true
+
+# World rules
+rules:
+  allow_simultaneous_actions: true
+  validate_actions: true
+  max_action_length: 200
+  # Strict turn order
+  enforce_turn_order: true
+  # Number of rounds
+  max_rounds: 10
+
+# Memory configuration
+memory:
+  observation_history_length: 20
+  gm_history_length: 50

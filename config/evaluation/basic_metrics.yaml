@@ -1,0 +1,75 @@
+# Basic Evaluation Metrics Configuration
+
+name: basic_metrics
+description: "Standard metrics for evaluating simulation outcomes"
+
+# Metrics to compute
+metrics:
+  # Interaction metrics
+  interaction:
+    enabled: true
+    measures:
+      - total_actions
+      - actions_per_entity
+      - interaction_frequency
+      - response_coherence
+
+  # Goal achievement metrics
+  goal_achievement:
+    enabled: true
+    measures:
+      - goal_progress
+      - goal_completion_rate
+      - partial_success_score
+
+  # Behavioral metrics
+  behavior:
+    enabled: true
+    measures:
+      - action_diversity
+      - strategy_consistency
+      - cooperation_score
+      - competition_score
+
+  # Economic metrics (for marketplace scenarios)
+  economic:
+    enabled: true
+    measures:
+      - total_trades
+      - trade_volume
+      - average_price
+      - price_variance
+      - buyer_satisfaction
+      - seller_revenue
+
+# Evaluation timing
+evaluation:
+  # Evaluate during simulation
+  online: true
+  online_interval: 10  # Every N steps
+
+  # Final evaluation after simulation
+  final: true
+
+  # Save evaluation results
+  save_results: true
+  results_path: ${experiment.output_dir}/evaluation_results.json
+
+# Aggregation settings
+aggregation:
+  # How to aggregate per-entity metrics
+  entity_aggregation: mean  # mean, sum, max, min
+  # How to aggregate across time
+  time_aggregation: final  # final, mean, max
+
+# Reporting
+reporting:
+  # Generate summary report
+  generate_summary: true
+  summary_path: ${experiment.output_dir}/evaluation_summary.md
+
+  # Include in HTML log
+  include_in_html: true
+
+  # Console output
+  print_summary: true

@@ -1,0 +1,226 @@
+"""Configuration validation utilities.
+
+This module provides functions for validating Hydra configurations
+to ensure they have all required fields and valid values.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from omegaconf import DictConfig
+
+
+class ConfigValidationError(Exception):
+    """Raised when configuration validation fails."""
+
+
+def validate_config(config: DictConfig) -> list[str]:
+    """Validate a Hydra configuration.
+
+    Args:
+        config: The configuration to validate.
+
+    Returns:
+        List of warning messages (empty if no warnings).
+
+    Raises:
+        ConfigValidationError: If required fields are missing or invalid.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    # Validate top-level structure
+    required_sections = ["simulation", "model", "scenario"]
+    for section in required_sections:
+        if section not in config:
+            errors.append(f"Missing required config section: {section}")
+
+    if errors:
+        raise ConfigValidationError(
+            "Configuration validation failed:\n" + "\n".join(f"  - {e}" for e in errors)
+        )
+
+    # Validate simulation config
+    _validate_simulation_config(config.simulation, errors, warnings)
+
+    # Validate model config
+    _validate_model_config(config.model, errors, warnings)
+
+    # Validate scenario config
+    _validate_scenario_config(config.scenario, errors, warnings)
+
+    if errors:
+        raise ConfigValidationError(
+            "Configuration validation failed:\n" + "\n".join(f"  - {e}" for e in errors)
+        )
+
+    return warnings
+
+
+def _validate_simulation_config(
+    sim_config: DictConfig,
+    errors: list[str],
+    warnings: list[str],
+) -> None:
+    """Validate simulation configuration section.
+
+    Args:
+        sim_config: Simulation configuration.
+        errors: List to append errors to.
+        warnings: List to append warnings to.
+    """
+    # Check execution settings
+    if "execution" not in sim_config:
+        errors.append("simulation.execution section is required")
+        return
+
+    exec_config = sim_config.execution
+
+    if "max_steps" not in exec_config:
+        warnings.append("simulation.execution.max_steps not set, using default")
+    elif exec_config.max_steps <= 0:
+        errors.append("simulation.execution.max_steps must be positive")
+
+    # Check logging settings
+    if "logging" in sim_config:
+        log_config = sim_config.logging
+        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        if "level" in log_config and log_config.level.upper() not in valid_levels:
+            errors.append(f"Invalid log level: {log_config.level}")
+
+
+def _validate_model_config(
+    model_config: DictConfig,
+    errors: list[str],
+    warnings: list[str],
+) -> None:
+    """Validate model configuration section.
+
+    Args:
+        model_config: Model configuration.
+        errors: List to append errors to.
+        warnings: List to append warnings to.
+    """
+    # Check for single model or multi-model setup
+    if "model_registry" in model_config:
+        # Multi-model configuration
+        registry = model_config.model_registry
+        if not registry:
+            errors.append("model.model_registry is empty")
+            return
+
+        for model_name, model_spec in registry.items():
+            if "provider" not in model_spec:
+                errors.append(f"model.model_registry.{model_name}.provider is required")
+            elif model_spec.provider.lower() not in ["openai", "anthropic", "ollama", "mock"]:
+                warnings.append(
+                    f"Unknown model provider '{model_spec.provider}' for {model_name}"
+                )
+
+            if "model_name" not in model_spec:
+                errors.append(f"model.model_registry.{model_name}.model_name is required")
+
+    else:
+        # Single model configuration
+        if "provider" not in model_config:
+            errors.append("model.provider is required")
+
+        if "model_name" not in model_config:
+            errors.append("model.model_name is required")
+
+
+def _validate_scenario_config(
+    scenario_config: DictConfig,
+    errors: list[str],
+    warnings: list[str],
+) -> None:
+    """Validate scenario configuration section.
+
+    Args:
+        scenario_config: Scenario configuration.
+        errors: List to append errors to.
+        warnings: List to append warnings to.
+    """
+    if "name" not in scenario_config:
+        warnings.append("scenario.name not set")
+
+    if "premise" not in scenario_config:
+        warnings.append("scenario.premise not set, simulation may lack context")
+
+    # Check agents configuration
+    if "agents" not in scenario_config:
+        errors.append("scenario.agents section is required")
+        return
+
+    agents_config = scenario_config.agents
+    total_agents = 0
+
+    for agent_type in ["buyers", "sellers"]:
+        if agent_type in agents_config:
+            for i, agent in enumerate(agents_config[agent_type]):
+                total_agents += 1
+                if "name" not in agent:
+                    errors.append(f"scenario.agents.{agent_type}[{i}].name is required")
+                if "prefab" not in agent:
+                    errors.append(f"scenario.agents.{agent_type}[{i}].prefab is required")
+
+    if "auctioneer" in agents_config:
+        total_agents += 1
+        auctioneer = agents_config.auctioneer
+        if "name" not in auctioneer:
+            errors.append("scenario.agents.auctioneer.name is required")
+        if "prefab" not in auctioneer:
+            errors.append("scenario.agents.auctioneer.prefab is required")
+
+    if total_agents == 0:
+        errors.append("At least one agent must be defined in scenario.agents")
+
+    # Check game master configuration
+    if "game_master" not in scenario_config:
+        warnings.append("scenario.game_master not set, using default")
+    else:
+        gm_config = scenario_config.game_master
+        if "prefab" not in gm_config:
+            errors.append("scenario.game_master.prefab is required")
+
+    # Check prefabs mapping
+    if "prefabs" not in scenario_config:
+        errors.append("scenario.prefabs mapping is required")
+
+
+def validate_entity_model_mapping(
+    mapping: dict[str, str],
+    available_models: list[str],
+    entity_names: list[str],
+) -> list[str]:
+    """Validate entity-to-model mapping.
+
+    Args:
+        mapping: Mapping from entity names to model names.
+        available_models: List of available model names.
+        entity_names: List of entity names that need models.
+
+    Returns:
+        List of warning messages.
+    """
+    warnings: list[str] = []
+
+    for entity_name, model_name in mapping.items():
+        if entity_name == "_default_":
+            continue
+        if model_name not in available_models:
+            warnings.append(
+                f"Entity '{entity_name}' mapped to unknown model '{model_name}'"
+            )
+
+    # Check for entities without explicit mapping
+    default_model = mapping.get("_default_")
+    for entity_name in entity_names:
+        if entity_name not in mapping and not default_model:
+            warnings.append(
+                f"Entity '{entity_name}' has no model mapping and no default is set"
+            )
+
+    return warnings

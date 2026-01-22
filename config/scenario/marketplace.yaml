@@ -1,0 +1,107 @@
+# Marketplace Scenario Configuration
+
+name: marketplace
+description: "A marketplace scenario with buyers, sellers, and an auctioneer"
+
+# Scenario premise
+premise: |
+  Welcome to the Grand Marketplace! This is a bustling trading hub where
+  buyers and sellers come together to exchange goods. Today's market
+  session is about to begin. The auctioneer will facilitate trades and
+  ensure fair dealings.
+
+# Knowledge and event builders
+builders:
+  knowledge:
+    module: scenarios.marketplace.knowledge
+    function: build_market_knowledge
+  events:
+    module: scenarios.marketplace.events
+    function: generate_market_events
+
+# Agent configurations
+agents:
+  # Buyer agents
+  buyers:
+    - name: Alice
+      prefab: buyer_agent
+      params:
+        goal: "Find the best deals on quality goods while staying within budget"
+        budget: 1000
+        strategy: value_seeker
+        preferred_categories:
+          - electronics
+          - books
+
+    - name: Bob
+      prefab: buyer_agent
+      params:
+        goal: "Acquire rare and unique items regardless of price"
+        budget: 5000
+        strategy: collector
+        preferred_categories:
+          - antiques
+          - art
+
+  # Seller agents
+  sellers:
+    - name: Charlie
+      prefab: seller_agent
+      params:
+        goal: "Maximize profits while building a reputation for quality"
+        inventory:
+          - item: "Vintage Watch"
+            category: antiques
+            base_price: 500
+            quantity: 1
+          - item: "Rare Book Collection"
+            category: books
+            base_price: 300
+            quantity: 3
+        pricing_strategy: premium
+
+    - name: Diana
+      prefab: seller_agent
+      params:
+        goal: "Sell inventory quickly with competitive pricing"
+        inventory:
+          - item: "Smartphone"
+            category: electronics
+            base_price: 400
+            quantity: 5
+          - item: "Tablet"
+            category: electronics
+            base_price: 300
+            quantity: 3
+        pricing_strategy: competitive
+
+  # Auctioneer agent
+  auctioneer:
+    name: Auctioneer Max
+    prefab: auctioneer_agent
+    params:
+      goal: "Facilitate fair and efficient trades in the marketplace"
+      auction_style: english
+      commission_rate: 0.05
+
+# Game Master configuration
+game_master:
+  prefab: market_game_master
+  name: market_master
+  params:
+    market_rules:
+      - "All trades must be witnessed by the auctioneer"
+      - "Buyers must have sufficient funds before bidding"
+      - "Sellers must accurately describe their items"
+    event_frequency: 0.3
+
+# Prefab mappings
+prefabs:
+  buyer_agent: scenarios.marketplace.agents.BuyerAgent
+  seller_agent: scenarios.marketplace.agents.SellerAgent
+  auctioneer_agent: scenarios.marketplace.agents.AuctioneerAgent
+  market_game_master: scenarios.marketplace.game_masters.MarketGameMaster
+
+# Data paths
+data:
+  knowledge_file: scenarios/marketplace/data/knowledge.yaml

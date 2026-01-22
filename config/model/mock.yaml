@@ -1,0 +1,10 @@
+# Mock Model Configuration (for testing without API calls)
+
+name: mock
+
+# Mock provider - uses MockLanguageModel
+provider: mock
+model_name: mock-model
+
+# No API configuration needed
+parameters: {}

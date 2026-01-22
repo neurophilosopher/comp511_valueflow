@@ -1,0 +1,34 @@
+# Sequential Simulation Configuration
+# Entities act one after another in each step
+
+name: sequential
+
+# Engine configuration
+engine:
+  type: sequential
+  # Whether to shuffle entity order each step
+  shuffle_order: false
+
+# Execution parameters
+execution:
+  # Maximum number of simulation steps
+  max_steps: 100
+  # Whether to display verbose output
+  verbose: true
+  # Checkpoint settings
+  checkpoint:
+    enabled: true
+    # Save checkpoint every N steps
+    interval: 10
+    path: ${experiment.output_dir}/checkpoints
+
+# Logging configuration
+logging:
+  # Save HTML visualization
+  save_html: true
+  html_path: ${experiment.output_dir}/simulation_log.html
+  # Save raw JSON log
+  save_raw: true
+  raw_path: ${experiment.output_dir}/raw_log.json
+  # Console output level
+  level: INFO

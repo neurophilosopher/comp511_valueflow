@@ -1,0 +1,45 @@
+# Generic World Environment Configuration
+
+name: generic_world
+description: "A generic simulation environment"
+
+# World properties
+world:
+  # Time representation
+  time:
+    enabled: true
+    format: "Day {day}, {time}"
+    initial_day: 1
+    initial_time: "morning"
+
+  # Location system
+  locations:
+    enabled: false
+    default_location: "central_area"
+
+# Game Master configuration
+game_master:
+  # GM prefab to use
+  prefab: basic_game_master
+  # GM name
+  name: narrator
+  # Observation generation style
+  observation_style: descriptive
+  # Event resolution approach
+  resolution_style: natural
+
+# World rules and constraints
+rules:
+  # Allow simultaneous actions
+  allow_simultaneous_actions: false
+  # Action validation
+  validate_actions: true
+  # Maximum action length
+  max_action_length: 500
+
+# Memory configuration
+memory:
+  # How many recent observations entities remember
+  observation_history_length: 50
+  # GM observation history length
+  gm_history_length: 100

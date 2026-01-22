@@ -1,0 +1,24 @@
+# Claude Model Configuration
+
+name: claude
+
+# Single model configuration
+provider: anthropic
+model_name: claude-3-5-sonnet-20241022
+
+# Model parameters
+parameters:
+  temperature: 0.7
+  max_tokens: 1024
+  top_p: 0.95
+
+# API configuration
+api:
+  api_key: ${oc.env:ANTHROPIC_API_KEY,}
+  timeout: 60
+  max_retries: 3
+
+# Rate limiting
+rate_limit:
+  rpm: 60
+  tpm: 100000

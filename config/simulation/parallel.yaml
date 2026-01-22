@@ -1,0 +1,32 @@
+# Parallel Simulation Configuration
+# Entities can act simultaneously when appropriate
+
+name: parallel
+
+# Engine configuration
+engine:
+  type: parallel
+  # Maximum concurrent entity actions
+  max_concurrent: 4
+  # Whether to synchronize at step boundaries
+  sync_steps: true
+
+# Execution parameters
+execution:
+  # Maximum number of simulation steps
+  max_steps: 100
+  # Whether to display verbose output
+  verbose: true
+  # Checkpoint settings
+  checkpoint:
+    enabled: true
+    interval: 10
+    path: ${experiment.output_dir}/checkpoints
+
+# Logging configuration
+logging:
+  save_html: true
+  html_path: ${experiment.output_dir}/simulation_log.html
+  save_raw: true
+  raw_path: ${experiment.output_dir}/raw_log.json
+  level: INFO
