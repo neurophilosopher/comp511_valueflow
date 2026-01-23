@@ -6,8 +6,9 @@ A flexible multi-agent simulation framework built on [Concordia v2](https://gith
 
 - **Hydra Configuration**: Composable YAML configurations for experiments, models, scenarios
 - **Multi-Model Support**: GPT-4, Claude, Ollama with per-agent model assignment
-- **Marketplace Scenario**: BuyerAgent, SellerAgent, AuctioneerAgent prefabs
-- **Extensible Architecture**: Easy to add new scenarios, agents, and game masters
+- **Dynamic Scenarios**: Switch scenarios via config (marketplace, debate, custom)
+- **Modular Architecture**: Engines, simulators, and components can be mixed and matched
+- **Extensible Design**: Easy to add new scenarios, agents, game masters, and components
 - **Full Dev Infrastructure**: Pre-commit hooks, CI/CD, type checking, testing
 
 ## Quick Start
@@ -45,11 +46,11 @@ ANTHROPIC_API_KEY=your-key-here
 ### Running Simulations
 
 ```bash
-# Run with default configuration
+# Run with default configuration (marketplace)
 python run_experiment.py
 
-# Run marketplace scenario
-python run_experiment.py scenario=marketplace
+# Switch to debate scenario
+python run_experiment.py scenario=debate
 
 # Override parameters
 python run_experiment.py simulation.execution.max_steps=50 model=claude
@@ -65,26 +66,61 @@ python run_experiment.py --cfg job
 
 ```
 simulator/
-├── run_experiment.py           # Main entry point (Hydra-decorated)
-├── config/                     # Hydra configuration
-│   ├── experiment.yaml         # Main config with defaults
-│   ├── simulation/             # Simulation mode configs
-│   ├── model/                  # Model configurations
-│   ├── environment/            # Environment settings
-│   ├── scenario/               # Scenario definitions
-│   └── evaluation/             # Evaluation metrics
-├── scenarios/                  # Scenario implementations
-│   └── marketplace/            # Marketplace scenario
-│       ├── agents.py           # Agent prefabs
-│       ├── game_masters.py     # Game master prefabs
-│       ├── knowledge.py        # Knowledge builders
-│       ├── events.py           # Event generators
-│       └── data/               # Static data
-├── src/                        # Core library
-│   ├── simulation/             # Simulation infrastructure
-│   ├── entities/               # Generic prefabs
-│   └── utils/                  # Utilities
-└── tests/                      # Test suite
+├── run_experiment.py              # Main entry point (Hydra-decorated)
+├── config/                        # Hydra configuration
+│   ├── experiment.yaml            # Main config with defaults
+│   ├── simulation/                # Simulation mode configs
+│   │   ├── sequential.yaml
+│   │   └── parallel.yaml
+│   ├── model/                     # Model configurations
+│   │   ├── gpt4.yaml
+│   │   ├── claude.yaml
+│   │   ├── mock.yaml
+│   │   └── multi_model.yaml
+│   ├── environment/               # Environment settings
+│   │   ├── generic_world.yaml
+│   │   └── game_theoretic.yaml
+│   ├── scenario/                  # Scenario definitions (dynamic)
+│   │   ├── marketplace.yaml       # Marketplace scenario
+│   │   └── debate.yaml            # Debate scenario example
+│   └── evaluation/                # Evaluation metrics
+│       └── basic_metrics.yaml
+├── scenarios/                     # Scenario implementations
+│   └── marketplace/               # Marketplace scenario
+│       ├── agents.py              # BuyerAgent, SellerAgent, AuctioneerAgent
+│       ├── game_masters.py        # MarketGameMaster
+│       ├── knowledge.py           # Knowledge builders
+│       ├── events.py              # Event generators
+│       └── data/
+│           └── knowledge.yaml     # Static knowledge data
+├── src/                           # Core library
+│   ├── simulation/                # Simulation infrastructure
+│   │   ├── simulation.py          # Core Simulation class
+│   │   ├── simulators/            # Simulator implementations
+│   │   │   ├── base.py            # BaseSimulator (abstract)
+│   │   │   └── multi_model.py     # MultiModelSimulator
+│   │   └── engines/               # Execution engines
+│   │       ├── base.py            # BaseEngine (abstract)
+│   │       └── sequential.py      # SequentialEngine
+│   ├── entities/                  # Generic entity prefabs
+│   │   ├── agents/
+│   │   │   ├── basic_entity.py    # BasicEntity prefab
+│   │   │   └── planning_agent.py  # PlanningAgent prefab
+│   │   ├── game_masters/
+│   │   │   └── basic_gm.py        # BasicGameMaster prefab
+│   │   └── components/            # Reusable entity components
+│   │       └── base.py            # BaseComponent (abstract)
+│   └── utils/                     # Utilities
+│       ├── config_helpers.py      # Config helper functions
+│       ├── validation.py          # Config validation
+│       ├── logging_setup.py       # Logging configuration
+│       └── testing.py             # Test utilities and mocks
+└── tests/                         # Test suite
+    ├── conftest.py                # Pytest fixtures
+    ├── test_agents/               # Agent tests
+    ├── test_simulators/           # Simulator tests
+    ├── test_scenarios/            # Scenario-specific tests
+    └── test_integration/          # Integration tests
 ```
 
 ## Configuration System
@@ -140,22 +176,46 @@ entity_model_mapping:
 
 ## Creating Custom Scenarios
 
-1. Create scenario directory: `scenarios/my_scenario/`
-2. Define agents in `agents.py`:
+1. Create config file `config/scenario/my_scenario.yaml`:
 
-```python
-@dataclasses.dataclass
-class MyAgent(prefab_lib.Prefab):
-    description: str = "My custom agent"
-    params: Mapping[str, Any] = dataclasses.field(default_factory=dict)
+```yaml
+name: my_scenario
+premise: |
+  Description of your scenario...
 
-    def build(self, model, memory_bank):
-        # Build agent with components
-        ...
+# Optional: define valid roles for validation
+roles:
+  - name: player
+    description: "A player in the game"
+  - name: referee
+    singular: true
+
+# Generic entities list - works for any scenario
+agents:
+  entities:
+    - name: Alice
+      role: player
+      prefab: basic_entity  # or custom prefab
+      params:
+        goal: "Win the game"
+
+    - name: Referee Bob
+      role: referee
+      prefab: basic_entity
+      params:
+        goal: "Ensure fair play"
+
+game_master:
+  prefab: basic_game_master
+  name: narrator
+
+prefabs:
+  basic_entity: src.entities.agents.basic_entity.BasicEntity
+  basic_game_master: src.entities.game_masters.basic_gm.BasicGameMaster
 ```
 
-3. Create config: `config/scenario/my_scenario.yaml`
-4. Run: `python run_experiment.py scenario=my_scenario`
+2. (Optional) Create custom prefabs in `scenarios/my_scenario/agents.py`
+3. Run: `python run_experiment.py scenario=my_scenario`
 
 ## Development
 
