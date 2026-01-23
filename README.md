@@ -110,6 +110,8 @@ simulator/
 │   │   │   └── basic_gm.py        # BasicGameMaster prefab
 │   │   └── components/            # Reusable entity components
 │   │       └── base.py            # BaseComponent (abstract)
+│   ├── models/                    # Model implementations
+│   │   └── local_model.py         # LocalModel for Ollama/local LLMs
 │   └── utils/                     # Utilities
 │       ├── config_helpers.py      # Config helper functions
 │       ├── validation.py          # Config validation
@@ -118,9 +120,16 @@ simulator/
 └── tests/                         # Test suite
     ├── conftest.py                # Pytest fixtures
     ├── test_agents/               # Agent tests
+    │   └── test_basic_entity.py
     ├── test_simulators/           # Simulator tests
+    │   ├── test_base_simulator.py
+    │   └── test_multi_model.py
     ├── test_scenarios/            # Scenario-specific tests
+    │   ├── test_marketplace_agents.py
+    │   ├── test_marketplace_events.py
+    │   └── test_marketplace_knowledge.py
     └── test_integration/          # Integration tests
+        └── test_simulation_run.py
 ```
 
 ## Configuration System
