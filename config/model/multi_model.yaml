@@ -6,36 +6,20 @@ name: multi_model
 # Model registry - define all available models
 model_registry:
   gpt4:
-    provider: openai
+    _target_: concordia.language_model.gpt_model.GptLanguageModel
     model_name: gpt-4-turbo
-    parameters:
-      temperature: 0.7
-      max_tokens: 1024
-    api:
-      api_key: ${oc.env:OPENAI_API_KEY,}
-      timeout: 60
-      max_retries: 3
+    api_key: ${oc.env:OPENAI_API_KEY,}
+    temperature: 0.7
 
   claude:
-    provider: anthropic
+    _target_: concordia.language_model.anthropic_model.AnthropicLanguageModel
     model_name: claude-3-5-sonnet-20241022
-    parameters:
-      temperature: 0.7
-      max_tokens: 1024
-    api:
-      api_key: ${oc.env:ANTHROPIC_API_KEY,}
-      timeout: 60
-      max_retries: 3
+    api_key: ${oc.env:ANTHROPIC_API_KEY,}
 
-  ollama_llama:
-    provider: ollama
-    model_name: llama3.1:8b
-    parameters:
-      temperature: 0.7
-      max_tokens: 1024
-    api:
-      host: ${oc.env:OLLAMA_HOST,http://localhost:11434}
-      timeout: 120
+  local_finetuned:
+    _target_: src.models.local_model.LocalLanguageModel
+    model_path: ${oc.env:LOCAL_MODEL_PATH,/models/my-finetuned-llm}
+    device: cuda
 
 # Entity to model mapping
 # Maps entity names to model keys from the registry

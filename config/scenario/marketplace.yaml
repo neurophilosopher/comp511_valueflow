@@ -110,10 +110,14 @@ game_master:
 
 # Prefab mappings
 prefabs:
-  buyer_agent: scenarios.marketplace.agents.BuyerAgent
-  seller_agent: scenarios.marketplace.agents.SellerAgent
-  auctioneer_agent: scenarios.marketplace.agents.AuctioneerAgent
-  market_game_master: scenarios.marketplace.game_masters.MarketGameMaster
+  buyer_agent:
+    _target_: scenarios.marketplace.agents.BuyerAgent
+  seller_agent:
+    _target_: scenarios.marketplace.agents.SellerAgent
+  auctioneer_agent:
+    _target_: scenarios.marketplace.agents.AuctioneerAgent
+  market_game_master:
+    _target_: scenarios.marketplace.game_masters.MarketGameMaster
 
 # Data paths
 data:

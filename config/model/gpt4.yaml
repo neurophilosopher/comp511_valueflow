@@ -1,31 +1,8 @@
 # GPT-4 Model Configuration
 
 name: gpt4
-
-# Single model configuration (all entities use the same model)
-provider: openai
+_target_: concordia.language_model.gpt_model.GptLanguageModel
 model_name: gpt-4-turbo
-
-# Model parameters
-parameters:
-  temperature: 0.7
-  max_tokens: 1024
-  top_p: 0.95
-
-# API configuration (can be overridden via environment variables)
-api:
-  # API key from environment variable
-  api_key: ${oc.env:OPENAI_API_KEY,}
-  # Optional organization ID
-  org_id: ${oc.env:OPENAI_ORG_ID,}
-  # Request timeout in seconds
-  timeout: 60
-  # Maximum retries on failure
-  max_retries: 3
-
-# Rate limiting
-rate_limit:
-  # Requests per minute
-  rpm: 60
-  # Tokens per minute
-  tpm: 90000
+api_key: ${oc.env:OPENAI_API_KEY,}
+temperature: 0.7
+max_tokens: 1024

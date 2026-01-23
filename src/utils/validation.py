@@ -98,11 +98,18 @@ def _validate_model_config(
 ) -> None:
     """Validate model configuration section.
 
+    Supports both new _target_ pattern and legacy provider pattern.
+
     Args:
         model_config: Model configuration.
         errors: List to append errors to.
         warnings: List to append warnings to.
     """
+    # New _target_ pattern (single model)
+    if "_target_" in model_config:
+        _validate_target_model_spec(model_config, "model", errors, warnings)
+        return
+
     # Check for single model or multi-model setup
     if "model_registry" in model_config:
         # Multi-model configuration
@@ -112,21 +119,69 @@ def _validate_model_config(
             return
 
         for model_name, model_spec in registry.items():
-            if "provider" not in model_spec:
-                errors.append(f"model.model_registry.{model_name}.provider is required")
-            elif model_spec.provider.lower() not in ["openai", "anthropic", "ollama", "mock"]:
-                warnings.append(f"Unknown model provider '{model_spec.provider}' for {model_name}")
+            # New _target_ pattern in registry
+            if "_target_" in model_spec:
+                _validate_target_model_spec(
+                    model_spec, f"model.model_registry.{model_name}", errors, warnings
+                )
+            else:
+                # Legacy provider pattern
+                if "provider" not in model_spec:
+                    errors.append(f"model.model_registry.{model_name}.provider is required")
+                elif model_spec.provider.lower() not in [
+                    "openai",
+                    "anthropic",
+                    "ollama",
+                    "mock",
+                ]:
+                    warnings.append(
+                        f"Unknown model provider '{model_spec.provider}' for {model_name}"
+                    )
 
-            if "model_name" not in model_spec:
-                errors.append(f"model.model_registry.{model_name}.model_name is required")
+                if "model_name" not in model_spec:
+                    errors.append(f"model.model_registry.{model_name}.model_name is required")
 
     else:
-        # Single model configuration
+        # Legacy single model configuration
         if "provider" not in model_config:
             errors.append("model.provider is required")
 
         if "model_name" not in model_config:
             errors.append("model.model_name is required")
+
+
+def _validate_target_model_spec(
+    model_spec: DictConfig,
+    path: str,
+    errors: list[str],
+    warnings: list[str],
+) -> None:
+    """Validate a model specification using the _target_ pattern.
+
+    Args:
+        model_spec: Model specification with _target_.
+        path: Config path for error messages.
+        errors: List to append errors to.
+        warnings: List to append warnings to.
+    """
+    target = model_spec.get("_target_", "")
+
+    # Check that _target_ is a valid import path
+    if not target or "." not in target:
+        errors.append(f"{path}._target_ must be a valid fully-qualified class path")
+        return
+
+    # Warn about potentially missing dependencies for known model types
+    known_targets = {
+        "concordia.language_model.gpt_model.GptLanguageModel": "openai",
+        "concordia.language_model.anthropic_model.AnthropicLanguageModel": "anthropic",
+        "concordia.language_model.ollama_model.OllamaLanguageModel": "ollama",
+        "src.utils.testing.MockLanguageModel": "mock",
+        "src.models.local_model.LocalLanguageModel": "local",
+    }
+
+    if target not in known_targets:
+        warnings.append(f"{path}._target_ '{target}' is not a known model class")
 
 
 def _validate_scenario_config(
@@ -183,6 +238,44 @@ def _validate_scenario_config(
     # Check prefabs mapping
     if "prefabs" not in scenario_config:
         errors.append("scenario.prefabs mapping is required")
+    else:
+        _validate_prefabs_config(scenario_config.prefabs, errors, warnings)
+
+
+def _validate_prefabs_config(
+    prefabs_config: DictConfig,
+    errors: list[str],
+    warnings: list[str],
+) -> None:
+    """Validate prefabs configuration section.
+
+    Supports both new _target_ pattern and legacy string path pattern.
+
+    Args:
+        prefabs_config: Prefabs configuration.
+        errors: List to append errors to.
+        warnings: List to append warnings to.
+    """
+    for prefab_name, prefab_spec in prefabs_config.items():
+        # New _target_ pattern
+        if hasattr(prefab_spec, "get") and "_target_" in prefab_spec:
+            target = prefab_spec.get("_target_", "")
+            if not target or "." not in target:
+                errors.append(
+                    f"scenario.prefabs.{prefab_name}._target_ must be a valid "
+                    "fully-qualified class path"
+                )
+        # Legacy string path pattern
+        elif isinstance(prefab_spec, str):
+            if "." not in prefab_spec:
+                errors.append(
+                    f"scenario.prefabs.{prefab_name} must be a valid fully-qualified class path"
+                )
+        else:
+            errors.append(
+                f"scenario.prefabs.{prefab_name} must be either a _target_ dict "
+                "or a string class path"
+            )
 
 
 def validate_entity_model_mapping(

@@ -83,5 +83,7 @@ game_master:
 
 # Prefab mappings (uses generic prefabs - scenario-specific prefabs could be created)
 prefabs:
-  basic_entity: src.entities.agents.basic_entity.BasicEntity
-  basic_game_master: src.entities.game_masters.basic_gm.BasicGameMaster
+  basic_entity:
+    _target_: src.entities.agents.basic_entity.BasicEntity
+  basic_game_master:
+    _target_: src.entities.game_masters.basic_gm.BasicGameMaster

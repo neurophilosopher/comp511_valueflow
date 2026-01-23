@@ -12,6 +12,7 @@ from typing import Any
 
 import numpy as np
 from concordia.language_model import language_model
+from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 from src.simulation.simulators.base import BaseSimulator
@@ -36,28 +37,38 @@ class MultiModelSimulator(BaseSimulator):
     def create_models(self) -> dict[str, language_model.LanguageModel]:
         """Create language model instances from the model registry.
 
+        Supports both new _target_ pattern and legacy provider pattern.
+
         Returns:
             Dictionary mapping model names to LanguageModel instances.
         """
         model_config = self._config.model
 
-        # Handle single-model configuration
-        if "model_registry" not in model_config:
-            model = self._create_single_model(model_config)
+        # New _target_ pattern (single model)
+        if "_target_" in model_config:
+            model = instantiate(model_config, _convert_="partial")
             return {model_config.name: model}
 
-        # Handle multi-model registry
-        models: dict[str, language_model.LanguageModel] = {}
-        registry = model_config.model_registry
+        # New _target_ pattern (multi-model registry)
+        if "model_registry" in model_config:
+            registry = model_config.model_registry
+            first_spec = next(iter(registry.values()))
 
-        for model_name, model_spec in registry.items():
-            model_spec_dict = OmegaConf.to_container(model_spec, resolve=True)
-            models[model_name] = self._create_model_from_spec(model_spec_dict)
+            if "_target_" in first_spec:
+                models: dict[str, language_model.LanguageModel] = {}
+                for model_name, model_spec in registry.items():
+                    models[model_name] = instantiate(model_spec, _convert_="partial")
+                return models
 
-        return models
+            # Legacy provider-based multi-model
+            return self._create_models_legacy_registry(registry)
 
-    def _create_single_model(self, model_config: DictConfig) -> language_model.LanguageModel:
-        """Create a single model from config.
+        # Legacy provider-based single model
+        model = self._create_single_model_legacy(model_config)
+        return {model_config.name: model}
+
+    def _create_single_model_legacy(self, model_config: DictConfig) -> language_model.LanguageModel:
+        """Create a single model from legacy provider-based config.
 
         Args:
             model_config: Configuration for a single model.
@@ -67,6 +78,23 @@ class MultiModelSimulator(BaseSimulator):
         """
         spec = OmegaConf.to_container(model_config, resolve=True)
         return self._create_model_from_spec(spec)
+
+    def _create_models_legacy_registry(
+        self, registry: DictConfig
+    ) -> dict[str, language_model.LanguageModel]:
+        """Create models from legacy provider-based registry.
+
+        Args:
+            registry: Model registry configuration.
+
+        Returns:
+            Dictionary mapping model names to LanguageModel instances.
+        """
+        models: dict[str, language_model.LanguageModel] = {}
+        for model_name, model_spec in registry.items():
+            model_spec_dict = OmegaConf.to_container(model_spec, resolve=True)
+            models[model_name] = self._create_model_from_spec(model_spec_dict)
+        return models
 
     def _create_model_from_spec(self, spec: dict[str, Any]) -> language_model.LanguageModel:
         """Create a language model from a specification dictionary.

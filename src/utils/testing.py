@@ -277,9 +277,8 @@ def create_test_config() -> dict[str, Any]:
         },
         "model": {
             "name": "mock",
-            "provider": "mock",
-            "model_name": "mock-model",
-            "parameters": {},
+            "_target_": "src.utils.testing.MockLanguageModel",
+            "default_response": "I observe my surroundings.",
         },
         "scenario": {
             "name": "test_scenario",
@@ -299,8 +298,12 @@ def create_test_config() -> dict[str, Any]:
                 "name": "test_narrator",
             },
             "prefabs": {
-                "basic_entity": "src.entities.agents.basic_entity.BasicEntity",
-                "basic_game_master": "src.entities.game_masters.basic_gm.BasicGameMaster",
+                "basic_entity": {
+                    "_target_": "src.entities.agents.basic_entity.BasicEntity",
+                },
+                "basic_game_master": {
+                    "_target_": "src.entities.game_masters.basic_gm.BasicGameMaster",
+                },
             },
         },
         "evaluation": {

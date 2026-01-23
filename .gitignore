@@ -174,9 +174,11 @@ secrets/
 *.pt
 *.pth
 *.onnx
-models/
+/models/
+!src/models/
 
 # Temporary
 tmp/
 temp/
 *.tmp
+.schemas

@@ -14,6 +14,7 @@ from typing import Any, cast
 import numpy as np
 from concordia.language_model import language_model
 from concordia.typing import prefab as prefab_lib
+from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 from src.simulation.simulation import Simulation
@@ -69,6 +70,8 @@ class BaseSimulator(ABC):
     def build_prefabs(self) -> dict[str, prefab_lib.Prefab]:
         """Build prefab instances from scenario configuration.
 
+        Supports both new _target_ pattern and legacy string path pattern.
+
         Returns:
             Dictionary mapping prefab names to Prefab instances.
         """
@@ -78,9 +81,19 @@ class BaseSimulator(ABC):
         # Load prefabs from scenario config
         prefab_mappings = scenario_config.get("prefabs", {})
 
-        for prefab_name, prefab_path in prefab_mappings.items():
-            prefab_class = self._load_class(prefab_path)
-            prefabs[prefab_name] = prefab_class()
+        for prefab_name, prefab_config in prefab_mappings.items():
+            # New _target_ pattern
+            if isinstance(prefab_config, DictConfig) and "_target_" in prefab_config:
+                prefabs[prefab_name] = instantiate(prefab_config)
+            # Legacy string path pattern
+            elif isinstance(prefab_config, str):
+                prefab_class = self._load_class(prefab_config)
+                prefabs[prefab_name] = prefab_class()
+            else:
+                raise ValueError(
+                    f"Invalid prefab config for {prefab_name}: "
+                    f"expected _target_ dict or string path, got {type(prefab_config)}"
+                )
 
         return prefabs
 
@@ -220,4 +233,4 @@ class BaseSimulator(ABC):
         """
         module_path, class_name = class_path.rsplit(".", 1)
         module = importlib.import_module(module_path)
-        return cast(type, getattr(module, class_name))
+        return cast("type", getattr(module, class_name))
