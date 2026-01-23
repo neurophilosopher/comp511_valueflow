@@ -56,9 +56,7 @@ class MultiModelSimulator(BaseSimulator):
 
         return models
 
-    def _create_single_model(
-        self, model_config: DictConfig
-    ) -> language_model.LanguageModel:
+    def _create_single_model(self, model_config: DictConfig) -> language_model.LanguageModel:
         """Create a single model from config.
 
         Args:
@@ -70,9 +68,7 @@ class MultiModelSimulator(BaseSimulator):
         spec = OmegaConf.to_container(model_config, resolve=True)
         return self._create_model_from_spec(spec)
 
-    def _create_model_from_spec(
-        self, spec: dict[str, Any]
-    ) -> language_model.LanguageModel:
+    def _create_model_from_spec(self, spec: dict[str, Any]) -> language_model.LanguageModel:
         """Create a language model from a specification dictionary.
 
         Args:
@@ -97,9 +93,7 @@ class MultiModelSimulator(BaseSimulator):
         else:
             raise ValueError(f"Unsupported model provider: {provider}")
 
-    def _create_openai_model(
-        self, spec: dict[str, Any]
-    ) -> language_model.LanguageModel:
+    def _create_openai_model(self, spec: dict[str, Any]) -> language_model.LanguageModel:
         """Create an OpenAI model.
 
         Args:
@@ -129,9 +123,7 @@ class MultiModelSimulator(BaseSimulator):
             **params,
         )
 
-    def _create_anthropic_model(
-        self, spec: dict[str, Any]
-    ) -> language_model.LanguageModel:
+    def _create_anthropic_model(self, spec: dict[str, Any]) -> language_model.LanguageModel:
         """Create an Anthropic Claude model.
 
         Args:
@@ -161,9 +153,7 @@ class MultiModelSimulator(BaseSimulator):
             **params,
         )
 
-    def _create_ollama_model(
-        self, spec: dict[str, Any]
-    ) -> language_model.LanguageModel:
+    def _create_ollama_model(self, spec: dict[str, Any]) -> language_model.LanguageModel:
         """Create an Ollama local model.
 
         Args:
@@ -183,9 +173,7 @@ class MultiModelSimulator(BaseSimulator):
         api_config = spec.get("api", {})
         params = spec.get("parameters", {})
 
-        host = api_config.get("host") or os.environ.get(
-            "OLLAMA_HOST", "http://localhost:11434"
-        )
+        host = api_config.get("host") or os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 
         return ollama_model.OllamaLanguageModel(
             model_name=spec.get("model_name", "llama3.1:8b"),
@@ -193,9 +181,7 @@ class MultiModelSimulator(BaseSimulator):
             **params,
         )
 
-    def _create_mock_model(
-        self, spec: dict[str, Any]
-    ) -> language_model.LanguageModel:
+    def _create_mock_model(self, spec: dict[str, Any]) -> language_model.LanguageModel:
         """Create a mock model for testing.
 
         Args:
@@ -205,6 +191,7 @@ class MultiModelSimulator(BaseSimulator):
             Mock LanguageModel instance.
         """
         from src.utils.testing import MockLanguageModel
+
         return MockLanguageModel()
 
     def create_embedder(self) -> Callable[[str], np.ndarray]:

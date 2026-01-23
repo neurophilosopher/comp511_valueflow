@@ -11,9 +11,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Any
 
-import numpy as np
 import pytest
 from omegaconf import DictConfig, OmegaConf
 
@@ -206,7 +204,12 @@ def marketplace_config() -> DictConfig:
                         "params": {
                             "goal": "Sell inventory",
                             "inventory": [
-                                {"item": "Widget", "category": "electronics", "base_price": 100, "quantity": 5}
+                                {
+                                    "item": "Widget",
+                                    "category": "electronics",
+                                    "base_price": 100,
+                                    "quantity": 5,
+                                }
                             ],
                             "pricing_strategy": "competitive",
                         },

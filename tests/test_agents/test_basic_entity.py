@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.entities.agents.basic_entity import BasicEntity
 
 

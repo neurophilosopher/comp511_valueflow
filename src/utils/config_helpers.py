@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import importlib
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -64,7 +64,7 @@ def get_scenario_config(config: DictConfig) -> dict[str, Any]:
     """
     from omegaconf import OmegaConf
 
-    return OmegaConf.to_container(config.scenario, resolve=True)
+    return cast(dict[str, Any], OmegaConf.to_container(config.scenario, resolve=True))
 
 
 def resolve_prefab_path(prefab_path: str) -> type:
@@ -82,7 +82,7 @@ def resolve_prefab_path(prefab_path: str) -> type:
     """
     module_path, class_name = prefab_path.rsplit(".", 1)
     module = importlib.import_module(module_path)
-    return getattr(module, class_name)
+    return cast(type, getattr(module, class_name))
 
 
 def get_checkpoint_path(config: DictConfig) -> Path | None:
@@ -192,4 +192,4 @@ def get_game_master_name(config: DictConfig) -> str:
         Game master name.
     """
     gm_config = config.scenario.get("game_master", {})
-    return gm_config.get("name", "narrator")
+    return str(gm_config.get("name", "narrator"))

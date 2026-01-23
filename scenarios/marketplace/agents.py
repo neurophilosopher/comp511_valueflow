@@ -57,9 +57,7 @@ class BuyerAgent(prefab_lib.Prefab):
 
         # Memory
         memory_key = agent_components.memory.DEFAULT_MEMORY_COMPONENT_KEY
-        components[memory_key] = agent_components.memory.AssociativeMemory(
-            memory_bank=memory_bank
-        )
+        components[memory_key] = agent_components.memory.AssociativeMemory(memory_bank=memory_bank)
 
         # Instructions
         strategy_descriptions = {
@@ -111,23 +109,29 @@ class BuyerAgent(prefab_lib.Prefab):
 
         # Situation perception
         situation_key = "SituationPerception"
-        components[situation_key] = agent_components.question_of_recent_memories.SituationPerception(
-            model=model,
-            pre_act_label=f"\nQuestion: What is {name}'s current situation in the marketplace?\nAnswer",
+        components[situation_key] = (
+            agent_components.question_of_recent_memories.SituationPerception(
+                model=model,
+                pre_act_label=f"\nQuestion: What is {name}'s current situation in the marketplace?\nAnswer",
+            )
         )
 
         # Available options
         options_key = "AvailableOptions"
-        components[options_key] = agent_components.question_of_recent_memories.AvailableOptionsPerception(
-            model=model,
-            pre_act_label=f"\nQuestion: What purchasing options are available to {name}?\nAnswer",
+        components[options_key] = (
+            agent_components.question_of_recent_memories.AvailableOptionsPerception(
+                model=model,
+                pre_act_label=f"\nQuestion: What purchasing options are available to {name}?\nAnswer",
+            )
         )
 
         # Best action
         best_action_key = "BestAction"
-        components[best_action_key] = agent_components.question_of_recent_memories.BestOptionPerception(
-            model=model,
-            pre_act_label=f"\nQuestion: What is the best action for {name} given budget constraints?\nAnswer",
+        components[best_action_key] = (
+            agent_components.question_of_recent_memories.BestOptionPerception(
+                model=model,
+                pre_act_label=f"\nQuestion: What is the best action for {name} given budget constraints?\nAnswer",
+            )
         )
 
         # Acting component
@@ -180,9 +184,7 @@ class SellerAgent(prefab_lib.Prefab):
 
         # Memory
         memory_key = agent_components.memory.DEFAULT_MEMORY_COMPONENT_KEY
-        components[memory_key] = agent_components.memory.AssociativeMemory(
-            memory_bank=memory_bank
-        )
+        components[memory_key] = agent_components.memory.AssociativeMemory(memory_bank=memory_bank)
 
         # Instructions
         strategy_descriptions = {
@@ -241,30 +243,36 @@ class SellerAgent(prefab_lib.Prefab):
 
         # Situation perception
         situation_key = "SituationPerception"
-        components[situation_key] = agent_components.question_of_recent_memories.SituationPerception(
-            model=model,
-            pre_act_label=f"\nQuestion: What is {name}'s current situation in the marketplace?\nAnswer",
+        components[situation_key] = (
+            agent_components.question_of_recent_memories.SituationPerception(
+                model=model,
+                pre_act_label=f"\nQuestion: What is {name}'s current situation in the marketplace?\nAnswer",
+            )
         )
 
         # Market analysis
         market_key = "MarketAnalysis"
-        components[market_key] = agent_components.question_of_recent_memories.QuestionOfRecentMemories(
-            model=model,
-            pre_act_label=f"\nQuestion: What is the current market demand for {name}'s products?\nAnswer",
-            question=(
-                f"Based on recent market activity, what items are buyers interested in? "
-                f"How should {name} adjust pricing or approach?"
-            ),
-            answer_prefix=f"{name} observes that ",
-            add_to_memory=False,
-            num_memories_to_retrieve=10,
+        components[market_key] = (
+            agent_components.question_of_recent_memories.QuestionOfRecentMemories(
+                model=model,
+                pre_act_label=f"\nQuestion: What is the current market demand for {name}'s products?\nAnswer",
+                question=(
+                    f"Based on recent market activity, what items are buyers interested in? "
+                    f"How should {name} adjust pricing or approach?"
+                ),
+                answer_prefix=f"{name} observes that ",
+                add_to_memory=False,
+                num_memories_to_retrieve=10,
+            )
         )
 
         # Best action
         best_action_key = "BestAction"
-        components[best_action_key] = agent_components.question_of_recent_memories.BestOptionPerception(
-            model=model,
-            pre_act_label=f"\nQuestion: What is the best sales action for {name}?\nAnswer",
+        components[best_action_key] = (
+            agent_components.question_of_recent_memories.BestOptionPerception(
+                model=model,
+                pre_act_label=f"\nQuestion: What is the best sales action for {name}?\nAnswer",
+            )
         )
 
         # Acting component
@@ -318,9 +326,7 @@ class AuctioneerAgent(prefab_lib.Prefab):
 
         # Memory
         memory_key = agent_components.memory.DEFAULT_MEMORY_COMPONENT_KEY
-        components[memory_key] = agent_components.memory.AssociativeMemory(
-            memory_bank=memory_bank
-        )
+        components[memory_key] = agent_components.memory.AssociativeMemory(memory_bank=memory_bank)
 
         # Instructions
         style_descriptions = {
@@ -370,16 +376,18 @@ class AuctioneerAgent(prefab_lib.Prefab):
 
         # Situation perception
         situation_key = "SituationPerception"
-        components[situation_key] = agent_components.question_of_recent_memories.SituationPerception(
-            model=model,
-            pre_act_label=f"\nQuestion: What is the current state of the auction?\nAnswer",
+        components[situation_key] = (
+            agent_components.question_of_recent_memories.SituationPerception(
+                model=model,
+                pre_act_label="\nQuestion: What is the current state of the auction?\nAnswer",
+            )
         )
 
         # Bid tracking
         bid_key = "BidAnalysis"
         components[bid_key] = agent_components.question_of_recent_memories.QuestionOfRecentMemories(
             model=model,
-            pre_act_label=f"\nQuestion: What are the current bids and who is leading?\nAnswer",
+            pre_act_label="\nQuestion: What are the current bids and who is leading?\nAnswer",
             question=(
                 "Review recent bids. What items are being auctioned? "
                 "What are the current highest bids? Who are the leading bidders?"
@@ -391,9 +399,11 @@ class AuctioneerAgent(prefab_lib.Prefab):
 
         # Best action
         best_action_key = "BestAction"
-        components[best_action_key] = agent_components.question_of_recent_memories.BestOptionPerception(
-            model=model,
-            pre_act_label=f"\nQuestion: What should the auctioneer do next?\nAnswer",
+        components[best_action_key] = (
+            agent_components.question_of_recent_memories.BestOptionPerception(
+                model=model,
+                pre_act_label="\nQuestion: What should the auctioneer do next?\nAnswer",
+            )
         )
 
         # Acting component

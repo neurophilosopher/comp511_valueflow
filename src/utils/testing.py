@@ -74,11 +74,13 @@ class MockLanguageModel(language_model.LanguageModel):
             Mock response string.
         """
         self._call_count += 1
-        self._call_history.append({
-            "type": "sample_text",
-            "prompt": prompt,
-            "max_tokens": max_tokens,
-        })
+        self._call_history.append(
+            {
+                "type": "sample_text",
+                "prompt": prompt,
+                "max_tokens": max_tokens,
+            }
+        )
 
         # Check for matching prompts in user-provided map
         for key, response in self._response_map.items():
@@ -139,17 +141,25 @@ class MockLanguageModel(language_model.LanguageModel):
             Tuple of (index, chosen response, empty metadata).
         """
         self._call_count += 1
-        self._call_history.append({
-            "type": "sample_choice",
-            "prompt": prompt,
-            "responses": list(responses),
-        })
+        self._call_history.append(
+            {
+                "type": "sample_choice",
+                "prompt": prompt,
+                "responses": list(responses),
+            }
+        )
 
         prompt_lower = prompt.lower()
 
         # For termination/finished checks (detected by prompt content), say "No" until enough steps
         # Concordia uses letters (a, b) for choices, so we find which maps to "No"
-        termination_keywords = ["terminate", "finished", "should the simulation end", "game over", "end the"]
+        termination_keywords = [
+            "terminate",
+            "finished",
+            "should the simulation end",
+            "game over",
+            "end the",
+        ]
         is_termination_check = any(kw in prompt_lower for kw in termination_keywords)
 
         if is_termination_check:
@@ -205,10 +215,12 @@ class MockMemoryBank:
             text: Memory text.
             metadata: Optional metadata.
         """
-        self._memories.append({
-            "text": text,
-            "metadata": metadata or {},
-        })
+        self._memories.append(
+            {
+                "text": text,
+                "metadata": metadata or {},
+            }
+        )
 
     def get_memories(self, query: str, num_results: int = 5) -> list[str]:
         """Get memories matching a query.
@@ -221,10 +233,7 @@ class MockMemoryBank:
             List of memory texts.
         """
         # Simple substring matching for testing
-        results = [
-            m["text"] for m in self._memories
-            if query.lower() in m["text"].lower()
-        ]
+        results = [m["text"] for m in self._memories if query.lower() in m["text"].lower()]
         return results[:num_results]
 
     def get_all_memories(self) -> list[str]:

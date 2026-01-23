@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from scenarios.marketplace.agents import AuctioneerAgent, BuyerAgent, SellerAgent
 
 

@@ -9,10 +9,9 @@ from __future__ import annotations
 import copy
 import functools
 import json
-import os
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Any, TypeAlias
+from typing import Any, TypeAlias, cast
 
 import numpy as np
 from concordia.associative_memory import basic_associative_memory as associative_memory
@@ -28,7 +27,7 @@ from concordia.utils import html as html_lib
 from omegaconf import DictConfig
 
 Config: TypeAlias = prefab_lib.Config
-Role = prefab_lib.Role
+Role: TypeAlias = prefab_lib.Role
 
 
 class Simulation(simulation_lib.Simulation):
@@ -86,15 +85,9 @@ class Simulation(simulation_lib.Simulation):
         """Build entities and game masters from configuration."""
         all_data = self._config.instances
 
-        gm_configs = [
-            cfg for cfg in all_data if cfg.role == Role.GAME_MASTER
-        ]
-        entity_configs = [
-            cfg for cfg in all_data if cfg.role == Role.ENTITY
-        ]
-        initializer_configs = [
-            cfg for cfg in all_data if cfg.role == Role.INITIALIZER
-        ]
+        gm_configs = [cfg for cfg in all_data if cfg.role == Role.GAME_MASTER]
+        entity_configs = [cfg for cfg in all_data if cfg.role == Role.ENTITY]
+        initializer_configs = [cfg for cfg in all_data if cfg.role == Role.INITIALIZER]
 
         # Build entities first (they don't need references to other entities)
         for entity_config in entity_configs:
@@ -282,11 +275,13 @@ class Simulation(simulation_lib.Simulation):
 
         # Order game masters: initializers first
         initializers = [
-            gm for gm in self.game_masters
+            gm
+            for gm in self.game_masters
             if self._entity_to_prefab_config[gm.name].role == Role.INITIALIZER
         ]
         other_gms = [
-            gm for gm in self.game_masters
+            gm
+            for gm in self.game_masters
             if self._entity_to_prefab_config[gm.name].role == Role.GAME_MASTER
         ]
         sorted_game_masters = initializers + other_gms
@@ -312,9 +307,7 @@ class Simulation(simulation_lib.Simulation):
         player_logs = []
         player_log_names = []
 
-        scores = helper_functions_lib.find_data_in_nested_structure(
-            raw_log, "Player Scores"
-        )
+        scores = helper_functions_lib.find_data_in_nested_structure(raw_log, "Player Scores")
 
         for player in self.entities:
             if (
@@ -338,16 +331,14 @@ class Simulation(simulation_lib.Simulation):
         if scores:
             summary = f"Player Scores: {scores[-1]}"
 
-        results_log = html_lib.PythonObjectToHTMLConverter(
-            copy.deepcopy(raw_log)
-        ).convert()
+        results_log = html_lib.PythonObjectToHTMLConverter(copy.deepcopy(raw_log)).convert()
         tabbed_html = html_lib.combine_html_pages(
             [results_log, *player_logs],
             ["Game Master log", *player_log_names],
             summary=summary,
             title="Simulation Log",
         )
-        return html_lib.finalise_html(tabbed_html)
+        return cast(str, html_lib.finalise_html(tabbed_html))
 
     def make_checkpoint_data(self) -> dict[str, Any]:
         """Create checkpoint data dictionary."""
@@ -414,7 +405,7 @@ class Simulation(simulation_lib.Simulation):
         checkpoint_file = Path(checkpoint_path) / f"step_{step}_checkpoint.json"
 
         try:
-            with open(checkpoint_file, "w") as f:
+            with checkpoint_file.open("w") as f:
                 json.dump(checkpoint_data, f, indent=2)
             print(f"Step {step}: Saved checkpoint to {checkpoint_file}")
         except OSError as e:

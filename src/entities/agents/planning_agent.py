@@ -67,9 +67,7 @@ class PlanningAgent(prefab_lib.Prefab):
 
         # === MEMORY COMPONENT ===
         memory_key = agent_components.memory.DEFAULT_MEMORY_COMPONENT_KEY
-        components[memory_key] = agent_components.memory.AssociativeMemory(
-            memory_bank=memory_bank
-        )
+        components[memory_key] = agent_components.memory.AssociativeMemory(memory_bank=memory_bank)
 
         # === INSTRUCTIONS COMPONENT ===
         instructions_key = "Instructions"
@@ -106,37 +104,45 @@ class PlanningAgent(prefab_lib.Prefab):
 
         # Situation perception
         situation_key = "SituationPerception"
-        components[situation_key] = agent_components.question_of_recent_memories.SituationPerception(
-            model=model,
-            pre_act_label=f"\nQuestion: What situation is {name} currently in?\nAnswer",
+        components[situation_key] = (
+            agent_components.question_of_recent_memories.SituationPerception(
+                model=model,
+                pre_act_label=f"\nQuestion: What situation is {name} currently in?\nAnswer",
+            )
         )
 
         # Self-reflection on recent experiences
         reflection_key = "SelfReflection"
-        components[reflection_key] = agent_components.question_of_recent_memories.QuestionOfRecentMemories(
-            model=model,
-            pre_act_label=f"\nQuestion: What has {name} learned from recent experiences?\nAnswer",
-            question=(
-                f"Reflect on {name}'s recent experiences. What lessons or insights "
-                f"can be drawn? How should this inform future actions?"
-            ),
-            answer_prefix=f"{name} reflects: ",
-            add_to_memory=False,
-            num_memories_to_retrieve=10,
+        components[reflection_key] = (
+            agent_components.question_of_recent_memories.QuestionOfRecentMemories(
+                model=model,
+                pre_act_label=f"\nQuestion: What has {name} learned from recent experiences?\nAnswer",
+                question=(
+                    f"Reflect on {name}'s recent experiences. What lessons or insights "
+                    f"can be drawn? How should this inform future actions?"
+                ),
+                answer_prefix=f"{name} reflects: ",
+                add_to_memory=False,
+                num_memories_to_retrieve=10,
+            )
         )
 
         # Available options analysis
         options_key = "AvailableOptions"
-        components[options_key] = agent_components.question_of_recent_memories.AvailableOptionsPerception(
-            model=model,
-            pre_act_label=f"\nQuestion: What options are available to {name}?\nAnswer",
+        components[options_key] = (
+            agent_components.question_of_recent_memories.AvailableOptionsPerception(
+                model=model,
+                pre_act_label=f"\nQuestion: What options are available to {name}?\nAnswer",
+            )
         )
 
         # Best action selection
         best_action_key = "BestActionSelection"
-        components[best_action_key] = agent_components.question_of_recent_memories.BestOptionPerception(
-            model=model,
-            pre_act_label=f"\nQuestion: What is the best action for {name} to take?\nAnswer",
+        components[best_action_key] = (
+            agent_components.question_of_recent_memories.BestOptionPerception(
+                model=model,
+                pre_act_label=f"\nQuestion: What is the best action for {name} to take?\nAnswer",
+            )
         )
 
         # === ACTING COMPONENT ===

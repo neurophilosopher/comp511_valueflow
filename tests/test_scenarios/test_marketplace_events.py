@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import random
 
-import pytest
-
 from scenarios.marketplace.events import (
-    generate_market_events,
-    create_opening_events,
     create_closing_events,
+    create_opening_events,
+    generate_market_events,
 )
 
 

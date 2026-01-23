@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-
 from scenarios.marketplace.knowledge import (
-    build_market_knowledge,
     _get_default_knowledge,
+    build_market_knowledge,
 )
 
 
@@ -23,7 +21,7 @@ class TestMarketKnowledge:
         assert "auctioneer" in knowledge
 
         # Each category should have knowledge facts
-        for category, facts in knowledge.items():
+        for _category, facts in knowledge.items():
             assert isinstance(facts, list)
             assert len(facts) > 0
 

@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -54,7 +55,7 @@ load_dotenv()
 
 def save_results(
     config: DictConfig,
-    result: str | list[dict[str, Any]],
+    result: str | list[Mapping[str, Any]],
 ) -> None:
     """Save simulation results to configured output paths.
 
@@ -70,7 +71,7 @@ def save_results(
         html_path = output_paths.get("html")
         if html_path:
             html_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(html_path, "w", encoding="utf-8") as f:
+            with html_path.open("w", encoding="utf-8") as f:
                 f.write(result)
             print(f"HTML log saved to: {html_path}")
 
@@ -79,7 +80,7 @@ def save_results(
         raw_path = output_paths.get("raw_log")
         if raw_path:
             raw_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(raw_path, "w", encoding="utf-8") as f:
+            with raw_path.open("w", encoding="utf-8") as f:
                 json.dump(result, f, indent=2, default=str)
             print(f"Raw log saved to: {raw_path}")
 
@@ -179,7 +180,7 @@ def run_quick_test() -> None:
 
     # Create test configuration
     test_config = create_test_config()
-    config = OmegaConf.create(test_config)
+    _config = OmegaConf.create(test_config)
 
     # Create mock models
     mock_model = MockLanguageModel()

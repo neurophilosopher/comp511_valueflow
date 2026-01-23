@@ -13,10 +13,12 @@ class ConcreteSimulator(BaseSimulator):
 
     def create_models(self):
         from src.utils.testing import MockLanguageModel
+
         return {"mock": MockLanguageModel()}
 
     def create_embedder(self):
         from src.utils.testing import mock_embedder
+
         return mock_embedder
 
 

@@ -115,9 +115,7 @@ def _validate_model_config(
             if "provider" not in model_spec:
                 errors.append(f"model.model_registry.{model_name}.provider is required")
             elif model_spec.provider.lower() not in ["openai", "anthropic", "ollama", "mock"]:
-                warnings.append(
-                    f"Unknown model provider '{model_spec.provider}' for {model_name}"
-                )
+                warnings.append(f"Unknown model provider '{model_spec.provider}' for {model_name}")
 
             if "model_name" not in model_spec:
                 errors.append(f"model.model_registry.{model_name}.model_name is required")
@@ -172,9 +170,7 @@ def _validate_scenario_config(
         defined_roles = {r.name for r in scenario_config.roles}
         for entity in entities:
             if "role" in entity and entity.role not in defined_roles:
-                warnings.append(
-                    f"Entity '{entity.name}' has undefined role '{entity.role}'"
-                )
+                warnings.append(f"Entity '{entity.name}' has undefined role '{entity.role}'")
 
     # Check game master configuration
     if "game_master" not in scenario_config:
@@ -210,16 +206,12 @@ def validate_entity_model_mapping(
         if entity_name == "_default_":
             continue
         if model_name not in available_models:
-            warnings.append(
-                f"Entity '{entity_name}' mapped to unknown model '{model_name}'"
-            )
+            warnings.append(f"Entity '{entity_name}' mapped to unknown model '{model_name}'")
 
     # Check for entities without explicit mapping
     default_model = mapping.get("_default_")
     for entity_name in entity_names:
         if entity_name not in mapping and not default_model:
-            warnings.append(
-                f"Entity '{entity_name}' has no model mapping and no default is set"
-            )
+            warnings.append(f"Entity '{entity_name}' has no model mapping and no default is set")
 
     return warnings

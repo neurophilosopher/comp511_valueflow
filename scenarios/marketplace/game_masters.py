@@ -63,9 +63,7 @@ class MarketGameMaster(prefab_lib.Prefab):
 
         # Memory
         memory_key = agent_components.memory.DEFAULT_MEMORY_COMPONENT_KEY
-        components[memory_key] = agent_components.memory.AssociativeMemory(
-            memory_bank=memory_bank
-        )
+        components[memory_key] = agent_components.memory.AssociativeMemory(memory_bank=memory_bank)
 
         # GM Instructions
         instructions_key = "instructions"

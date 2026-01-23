@@ -67,9 +67,7 @@ class BasicEntity(prefab_lib.Prefab):
 
         # === MEMORY COMPONENT (Required) ===
         memory_key = agent_components.memory.DEFAULT_MEMORY_COMPONENT_KEY
-        components[memory_key] = agent_components.memory.AssociativeMemory(
-            memory_bank=memory_bank
-        )
+        components[memory_key] = agent_components.memory.AssociativeMemory(memory_bank=memory_bank)
 
         # === INSTRUCTIONS COMPONENT ===
         instructions_key = "Instructions"
@@ -99,9 +97,11 @@ class BasicEntity(prefab_lib.Prefab):
         # === REASONING COMPONENTS ===
         # Situation perception
         situation_key = "SituationPerception"
-        components[situation_key] = agent_components.question_of_recent_memories.SituationPerception(
-            model=model,
-            pre_act_label=f"\nQuestion: What situation is {name} currently in?\nAnswer",
+        components[situation_key] = (
+            agent_components.question_of_recent_memories.SituationPerception(
+                model=model,
+                pre_act_label=f"\nQuestion: What situation is {name} currently in?\nAnswer",
+            )
         )
 
         # === GOAL COMPONENT (Optional) ===

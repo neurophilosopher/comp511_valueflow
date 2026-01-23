@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import importlib
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-from typing import Any
+from collections.abc import Callable, Mapping
+from typing import Any, cast
 
 import numpy as np
 from concordia.language_model import language_model
@@ -98,30 +98,31 @@ class BaseSimulator(ABC):
 
         # Generic entity processing - works for any scenario
         for entity in agents_config.get("entities", []):
-            entity_params = OmegaConf.to_container(
-                entity.get("params", {}), resolve=True
-            )
+            entity_params = OmegaConf.to_container(entity.get("params", {}), resolve=True)
             entity_params["name"] = entity.name
             # Pass scenario role to prefab if defined
             if "role" in entity:
                 entity_params["scenario_role"] = entity.role
 
-            instances.append(prefab_lib.InstanceConfig(
-                prefab=entity.prefab,
-                role=prefab_lib.Role.ENTITY,
-                params=entity_params,
-            ))
+            instances.append(
+                prefab_lib.InstanceConfig(
+                    prefab=entity.prefab,
+                    role=prefab_lib.Role.ENTITY,
+                    params=entity_params,
+                )
+            )
 
         # Build game master instance
         gm_config = scenario_config.get("game_master", {})
         if gm_config:
-            instances.append(prefab_lib.InstanceConfig(
-                prefab=gm_config.prefab,
-                role=prefab_lib.Role.GAME_MASTER,
-                params=OmegaConf.to_container(gm_config.get("params", {}), resolve=True) | {
-                    "name": gm_config.name
-                },
-            ))
+            instances.append(
+                prefab_lib.InstanceConfig(
+                    prefab=gm_config.prefab,
+                    role=prefab_lib.Role.GAME_MASTER,
+                    params=OmegaConf.to_container(gm_config.get("params", {}), resolve=True)
+                    | {"name": gm_config.name},
+                )
+            )
 
         return instances
 
@@ -179,7 +180,7 @@ class BaseSimulator(ABC):
             hydra_config=self._config,
         )
 
-    def run(self) -> str | list[dict[str, Any]]:
+    def run(self) -> str | list[Mapping[str, Any]]:
         """Run the simulation.
 
         Returns:
@@ -219,4 +220,4 @@ class BaseSimulator(ABC):
         """
         module_path, class_name = class_path.rsplit(".", 1)
         module = importlib.import_module(module_path)
-        return getattr(module, class_name)
+        return cast(type, getattr(module, class_name))

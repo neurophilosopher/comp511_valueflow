@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import pytest
-from omegaconf import DictConfig
-
 from concordia.typing import prefab as prefab_lib
 
 from src.entities.agents.basic_entity import BasicEntity
 from src.entities.game_masters.basic_gm import BasicGameMaster
 from src.simulation.simulation import Simulation
-from src.utils.testing import MockLanguageModel, mock_embedder
+from src.utils.testing import MockLanguageModel
 
 
 class TestSimulationSetup:

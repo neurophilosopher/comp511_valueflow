@@ -7,7 +7,7 @@ based on their role and the scenario parameters.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -61,10 +61,10 @@ def _load_static_knowledge() -> dict[str, list[str]]:
     if not knowledge_path.exists():
         return _get_default_knowledge()
 
-    with open(knowledge_path) as f:
+    with knowledge_path.open() as f:
         data = yaml.safe_load(f)
 
-    return data if data else _get_default_knowledge()
+    return cast(dict[str, list[str]], data) if data else _get_default_knowledge()
 
 
 def _get_default_knowledge() -> dict[str, list[str]]:
