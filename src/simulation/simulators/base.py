@@ -96,31 +96,20 @@ class BaseSimulator(ABC):
         # Build agent instances
         agents_config = scenario_config.get("agents", {})
 
-        # Process buyers
-        for buyer in agents_config.get("buyers", []):
-            instances.append(prefab_lib.InstanceConfig(
-                prefab=buyer.prefab,
-                role=prefab_lib.Role.ENTITY,
-                params=OmegaConf.to_container(buyer.params, resolve=True) | {"name": buyer.name},
-            ))
+        # Generic entity processing - works for any scenario
+        for entity in agents_config.get("entities", []):
+            entity_params = OmegaConf.to_container(
+                entity.get("params", {}), resolve=True
+            )
+            entity_params["name"] = entity.name
+            # Pass scenario role to prefab if defined
+            if "role" in entity:
+                entity_params["scenario_role"] = entity.role
 
-        # Process sellers
-        for seller in agents_config.get("sellers", []):
             instances.append(prefab_lib.InstanceConfig(
-                prefab=seller.prefab,
+                prefab=entity.prefab,
                 role=prefab_lib.Role.ENTITY,
-                params=OmegaConf.to_container(seller.params, resolve=True) | {"name": seller.name},
-            ))
-
-        # Process auctioneer
-        auctioneer = agents_config.get("auctioneer")
-        if auctioneer:
-            instances.append(prefab_lib.InstanceConfig(
-                prefab=auctioneer.prefab,
-                role=prefab_lib.Role.ENTITY,
-                params=OmegaConf.to_container(auctioneer.params, resolve=True) | {
-                    "name": auctioneer.name
-                },
+                params=entity_params,
             ))
 
         # Build game master instance

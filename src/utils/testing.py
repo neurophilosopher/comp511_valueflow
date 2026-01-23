@@ -276,14 +276,14 @@ def create_test_config() -> dict[str, Any]:
             "name": "test_scenario",
             "premise": "This is a test scenario.",
             "agents": {
-                "buyers": [
+                "entities": [
                     {
-                        "name": "TestBuyer",
+                        "name": "TestAgent",
+                        "role": "test",
                         "prefab": "basic_entity",
                         "params": {"goal": "Test goal"},
                     }
                 ],
-                "sellers": [],
             },
             "game_master": {
                 "prefab": "basic_game_master",

@@ -155,27 +155,26 @@ def _validate_scenario_config(
         return
 
     agents_config = scenario_config.agents
-    total_agents = 0
+    entities = agents_config.get("entities", [])
 
-    for agent_type in ["buyers", "sellers"]:
-        if agent_type in agents_config:
-            for i, agent in enumerate(agents_config[agent_type]):
-                total_agents += 1
-                if "name" not in agent:
-                    errors.append(f"scenario.agents.{agent_type}[{i}].name is required")
-                if "prefab" not in agent:
-                    errors.append(f"scenario.agents.{agent_type}[{i}].prefab is required")
+    # Generic validation for any entity
+    for i, entity in enumerate(entities):
+        if "name" not in entity:
+            errors.append(f"scenario.agents.entities[{i}].name is required")
+        if "prefab" not in entity:
+            errors.append(f"scenario.agents.entities[{i}].prefab is required")
 
-    if "auctioneer" in agents_config:
-        total_agents += 1
-        auctioneer = agents_config.auctioneer
-        if "name" not in auctioneer:
-            errors.append("scenario.agents.auctioneer.name is required")
-        if "prefab" not in auctioneer:
-            errors.append("scenario.agents.auctioneer.prefab is required")
+    if len(entities) == 0:
+        errors.append("At least one entity must be defined in scenario.agents.entities")
 
-    if total_agents == 0:
-        errors.append("At least one agent must be defined in scenario.agents")
+    # Optional: validate roles if defined in scenario
+    if "roles" in scenario_config:
+        defined_roles = {r.name for r in scenario_config.roles}
+        for entity in entities:
+            if "role" in entity and entity.role not in defined_roles:
+                warnings.append(
+                    f"Entity '{entity.name}' has undefined role '{entity.role}'"
+                )
 
     # Check game master configuration
     if "game_master" not in scenario_config:

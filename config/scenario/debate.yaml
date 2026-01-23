@@ -1,0 +1,87 @@
+# Debate Scenario Configuration
+# Example alternative scenario demonstrating the dynamic scenario system
+
+name: debate
+description: "A formal debate scenario with debaters, moderator, and judges"
+
+# Scenario premise
+premise: |
+  Welcome to the Grand Debate Hall! Today's debate will discuss an important
+  topic. The debaters will present their arguments, the moderator will ensure
+  fair proceedings, and the judges will evaluate the arguments presented.
+
+# Define the roles available in this scenario (optional, for validation)
+roles:
+  - name: debater
+    description: "Agents who argue for or against a position"
+  - name: moderator
+    description: "Agent who facilitates the debate"
+    singular: true
+  - name: judge
+    description: "Agents who evaluate the arguments"
+
+# Agent configurations - generic entities list
+agents:
+  entities:
+    # Debaters
+    - name: Pro Team Lead
+      role: debater
+      prefab: basic_entity
+      params:
+        goal: "Argue convincingly in favor of the proposition using logic and evidence"
+        position: pro
+        style: analytical
+
+    - name: Con Team Lead
+      role: debater
+      prefab: basic_entity
+      params:
+        goal: "Argue convincingly against the proposition using logic and evidence"
+        position: con
+        style: rhetorical
+
+    # Moderator
+    - name: Head Moderator
+      role: moderator
+      prefab: basic_entity
+      params:
+        goal: "Ensure fair and orderly debate proceedings"
+        time_limit_per_speaker: 5
+        enforce_rules: true
+
+    # Judges
+    - name: Judge Adams
+      role: judge
+      prefab: basic_entity
+      params:
+        goal: "Evaluate arguments based on logic, evidence, and persuasiveness"
+        criteria:
+          - logic
+          - evidence
+          - delivery
+
+    - name: Judge Baker
+      role: judge
+      prefab: basic_entity
+      params:
+        goal: "Evaluate arguments based on logic, evidence, and persuasiveness"
+        criteria:
+          - logic
+          - evidence
+          - delivery
+
+# Game Master configuration
+game_master:
+  prefab: basic_game_master
+  name: debate_master
+  params:
+    debate_rules:
+      - "Each speaker has a time limit"
+      - "No personal attacks allowed"
+      - "Arguments must be supported by evidence"
+    topic: "Resolved: Technology improves quality of life"
+
+# Prefab mappings (uses generic prefabs - scenario-specific prefabs could be created)
+prefabs:
+  basic_entity: src.entities.agents.basic_entity.BasicEntity
+  basic_game_master: src.entities.game_masters.basic_gm.BasicGameMaster

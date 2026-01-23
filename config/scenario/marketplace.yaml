@@ -10,6 +10,16 @@ premise: |
   session is about to begin. The auctioneer will facilitate trades and
   ensure fair dealings.
 
+# Define the roles available in this scenario (optional, for validation)
+roles:
+  - name: buyer
+    description: "Agents who seek to purchase goods"
+  - name: seller
+    description: "Agents who offer goods for sale"
+  - name: auctioneer
+    description: "Agent who facilitates trades"
+    singular: true
+
 # Knowledge and event builders
 builders:
   knowledge:
@@ -19,11 +29,12 @@ builders:
     module: scenarios.marketplace.events
     function: generate_market_events
 
-# Agent configurations
+# Agent configurations - generic entities list
 agents:
-  # Buyer agents
-  buyers:
+  entities:
+    # Buyer agents
     - name: Alice
+      role: buyer
       prefab: buyer_agent
       params:
         goal: "Find the best deals on quality goods while staying within budget"
@@ -34,6 +45,7 @@ agents:
           - books
 
     - name: Bob
+      role: buyer
       prefab: buyer_agent
       params:
         goal: "Acquire rare and unique items regardless of price"
@@ -43,9 +55,9 @@ agents:
           - antiques
           - art
 
-  # Seller agents
-  sellers:
+    # Seller agents
     - name: Charlie
+      role: seller
       prefab: seller_agent
       params:
         goal: "Maximize profits while building a reputation for quality"
@@ -61,6 +73,7 @@ agents:
         pricing_strategy: premium
 
     - name: Diana
+      role: seller
       prefab: seller_agent
       params:
         goal: "Sell inventory quickly with competitive pricing"
@@ -75,14 +88,14 @@ agents:
             quantity: 3
         pricing_strategy: competitive
 
-  # Auctioneer agent
-  auctioneer:
-    name: Auctioneer Max
-    prefab: auctioneer_agent
-    params:
-      goal: "Facilitate fair and efficient trades in the marketplace"
-      auction_style: english
-      commission_rate: 0.05
+    # Auctioneer agent
+    - name: Auctioneer Max
+      role: auctioneer
+      prefab: auctioneer_agent
+      params:
+        goal: "Facilitate fair and efficient trades in the marketplace"
+        auction_style: english
+        commission_rate: 0.05
 
 # Game Master configuration
 game_master:

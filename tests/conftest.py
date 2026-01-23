@@ -117,19 +117,19 @@ def test_config() -> DictConfig:
             "name": "test_scenario",
             "premise": "This is a test scenario.",
             "agents": {
-                "buyers": [
+                "entities": [
                     {
                         "name": "TestBuyer",
+                        "role": "buyer",
                         "prefab": "buyer_agent",
                         "params": {"goal": "Test goal", "budget": 100},
-                    }
-                ],
-                "sellers": [
+                    },
                     {
                         "name": "TestSeller",
+                        "role": "seller",
                         "prefab": "seller_agent",
                         "params": {"goal": "Sell items", "inventory": []},
-                    }
+                    },
                 ],
             },
             "game_master": {
@@ -187,9 +187,10 @@ def marketplace_config() -> DictConfig:
             "name": "marketplace",
             "premise": "A bustling marketplace where traders gather.",
             "agents": {
-                "buyers": [
+                "entities": [
                     {
                         "name": "Alice",
+                        "role": "buyer",
                         "prefab": "buyer_agent",
                         "params": {
                             "goal": "Find good deals",
@@ -198,10 +199,9 @@ def marketplace_config() -> DictConfig:
                             "preferred_categories": ["electronics"],
                         },
                     },
-                ],
-                "sellers": [
                     {
                         "name": "Bob",
+                        "role": "seller",
                         "prefab": "seller_agent",
                         "params": {
                             "goal": "Sell inventory",
@@ -211,16 +211,17 @@ def marketplace_config() -> DictConfig:
                             "pricing_strategy": "competitive",
                         },
                     },
-                ],
-                "auctioneer": {
-                    "name": "Max",
-                    "prefab": "auctioneer_agent",
-                    "params": {
-                        "goal": "Facilitate trades",
-                        "auction_style": "english",
-                        "commission_rate": 0.05,
+                    {
+                        "name": "Max",
+                        "role": "auctioneer",
+                        "prefab": "auctioneer_agent",
+                        "params": {
+                            "goal": "Facilitate trades",
+                            "auction_style": "english",
+                            "commission_rate": 0.05,
+                        },
                     },
-                },
+                ],
             },
             "game_master": {
                 "prefab": "market_game_master",
@@ -295,19 +296,19 @@ def multi_model_config() -> DictConfig:
             "name": "test_scenario",
             "premise": "Multi-model test scenario.",
             "agents": {
-                "buyers": [
+                "entities": [
                     {
                         "name": "Alice",
+                        "role": "buyer",
                         "prefab": "basic_entity",
                         "params": {"goal": "Test"},
-                    }
-                ],
-                "sellers": [
+                    },
                     {
                         "name": "Bob",
+                        "role": "seller",
                         "prefab": "basic_entity",
                         "params": {"goal": "Test"},
-                    }
+                    },
                 ],
             },
             "game_master": {

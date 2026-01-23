@@ -175,12 +175,9 @@ def get_entity_names(config: DictConfig) -> list[str]:
     names: list[str] = []
     agents_config = config.scenario.get("agents", {})
 
-    for agent_type in ["buyers", "sellers"]:
-        for agent in agents_config.get(agent_type, []):
-            names.append(agent.name)
-
-    if "auctioneer" in agents_config:
-        names.append(agents_config.auctioneer.name)
+    # Generic: iterate over all entities regardless of scenario type
+    for entity in agents_config.get("entities", []):
+        names.append(entity.name)
 
     return names
 
