@@ -1,0 +1,146 @@
+# Election Scenario Evaluation Metrics
+# These metrics are adapted from the mastodon-sim probe_lib.py
+
+name: election_metrics
+description: "Metrics for evaluating election scenario simulations"
+
+metrics:
+  # Vote preference - which candidate each voter prefers
+  vote_preference:
+    description: "Track which candidate each voter currently prefers"
+    type: categorical
+    categories:
+      - conservative_candidate
+      - progressive_candidate
+      - undecided
+    prompt_template: |
+      Based on {agent_name}'s recent statements and thoughts about the election,
+      which candidate do they currently prefer?
+      Answer with one of: conservative_candidate, progressive_candidate, undecided
+    applies_to:
+      - voter
+
+  # Favorability score - 1-10 rating for each candidate
+  favorability_conservative:
+    description: "Favorability rating for the conservative candidate (1-10)"
+    type: numeric
+    min: 1
+    max: 10
+    prompt_template: |
+      On a scale of 1-10, how favorably does {agent_name} view the conservative
+      candidate based on their recent statements and thoughts?
+      1 = very unfavorable, 10 = very favorable
+      Answer with just a number.
+    applies_to:
+      - voter
+
+  favorability_progressive:
+    description: "Favorability rating for the progressive candidate (1-10)"
+    type: numeric
+    min: 1
+    max: 10
+    prompt_template: |
+      On a scale of 1-10, how favorably does {agent_name} view the progressive
+      candidate based on their recent statements and thoughts?
+      1 = very unfavorable, 10 = very favorable
+      Answer with just a number.
+    applies_to:
+      - voter
+
+  # Vote intent - will the agent vote?
+  vote_intent:
+    description: "Whether the voter intends to vote in the election"
+    type: categorical
+    categories:
+      - definitely_voting
+      - likely_voting
+      - unlikely_voting
+      - not_voting
+    prompt_template: |
+      Based on {agent_name}'s engagement with the election, how likely are they
+      to vote? Answer with one of: definitely_voting, likely_voting,
+      unlikely_voting, not_voting
+    applies_to:
+      - voter
+
+  # Opinion strength - how strongly held are their views
+  opinion_strength:
+    description: "How strongly the voter holds their current political opinion (1-10)"
+    type: numeric
+    min: 1
+    max: 10
+    prompt_template: |
+      On a scale of 1-10, how strongly does {agent_name} hold their current
+      political views? 1 = very weakly held, easily persuaded
+      10 = very strongly held, unlikely to change
+      Answer with just a number.
+    applies_to:
+      - voter
+
+  # Issue salience - what issues matter most
+  top_issue:
+    description: "The most important issue for this voter"
+    type: categorical
+    categories:
+      - economy
+      - healthcare
+      - education
+      - environment
+      - public_safety
+      - other
+    prompt_template: |
+      What is the most important issue for {agent_name} in this election?
+      Answer with one of: economy, healthcare, education, environment,
+      public_safety, other
+    applies_to:
+      - voter
+
+  # Campaign effectiveness - for candidates
+  campaign_momentum:
+    description: "Perceived momentum of the candidate's campaign (1-10)"
+    type: numeric
+    min: 1
+    max: 10
+    prompt_template: |
+      On a scale of 1-10, how much momentum does {agent_name}'s campaign
+      seem to have based on recent events?
+      1 = losing ground, 10 = gaining significant support
+      Answer with just a number.
+    applies_to:
+      - candidate
+
+  # Message clarity - for candidates
+  message_clarity:
+    description: "How clearly the candidate communicates their platform (1-10)"
+    type: numeric
+    min: 1
+    max: 10
+    prompt_template: |
+      On a scale of 1-10, how clearly is {agent_name} communicating their
+      policy positions and campaign message?
+      1 = very unclear, 10 = very clear
+      Answer with just a number.
+    applies_to:
+      - candidate
+
+# Aggregation rules for summary statistics
+aggregations:
+  - name: candidate_support
+    description: "Percentage of voters supporting each candidate"
+    metric: vote_preference
+    method: percentage_by_category
+
+  - name: average_favorability
+    description: "Average favorability ratings"
+    metrics:
+      - favorability_conservative
+      - favorability_progressive
+    method: mean
+
+  - name: voter_engagement
+    description: "Percentage of voters likely to vote"
+    metric: vote_intent
+    method: percentage_positive
+    positive_values:
+      - definitely_voting
+      - likely_voting

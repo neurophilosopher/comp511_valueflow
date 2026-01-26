@@ -1,0 +1,70 @@
+# Election Scenario Knowledge Base
+# This file contains static knowledge facts for different agent roles
+
+general:
+  - "An important local election is approaching in the community."
+  - "Citizens are encouraged to participate actively in the democratic process."
+  - "Voting is both a fundamental right and a civic responsibility."
+  - "Candidates present different visions for the community's future."
+  - "Informed voting requires understanding each candidate's policy positions."
+  - "Political discussions should be conducted with mutual respect and civility."
+  - "Elections are decided by those who show up to vote."
+  - "Local elections often have the most direct impact on daily life."
+  - "Democracy works best when citizens are engaged and informed."
+  - "Every vote counts in shaping the direction of the community."
+
+voter:
+  - "Consider how each candidate's policies would affect your daily life."
+  - "Look beyond campaign rhetoric to understand actual policy positions."
+  - "Your vote is your voice in shaping the community's direction."
+  - "It's okay to be undecided while gathering more information."
+  - "Talking to neighbors about the election can provide new perspectives."
+  - "Attend candidate events when possible to hear them speak directly."
+  - "Consider both short-term and long-term implications of policies."
+  - "Research candidates' track records, not just their promises."
+  - "Think about which issues matter most to you and your family."
+  - "Be wary of misleading claims - verify information from multiple sources."
+
+candidate:
+  - "Connecting with voters requires understanding their real concerns."
+  - "Clear communication of policy positions builds voter trust."
+  - "Campaign promises should be realistic and achievable if elected."
+  - "Debates are opportunities to contrast your vision with opponents."
+  - "Grassroots support is built through genuine community engagement."
+  - "Respond to criticism with facts rather than personal attacks."
+  - "Acknowledge complexity in issues rather than oversimplifying."
+  - "Show respect for opponents while differentiating your positions."
+  - "Listen to voter feedback and adjust messaging accordingly."
+  - "Authentic connection matters more than polished talking points."
+
+news:
+  - "Fair coverage gives appropriate attention to all candidates."
+  - "Fact-checking claims helps voters make informed decisions."
+  - "Local issues often matter most to community members."
+  - "Interview subjects across the political spectrum for balance."
+  - "Report on policy substance, not just political theater."
+  - "Distinguish between news reporting and editorial opinion."
+  - "Provide context for complex policy proposals."
+  - "Cover candidate events and statements accurately."
+  - "Highlight issues that directly affect the local community."
+  - "Maintain independence from candidate campaigns."
+
+election_rules:
+  - "All eligible citizens have the right to vote."
+  - "Voters should have access to accurate information about candidates."
+  - "Campaign materials should not contain deliberate misinformation."
+  - "Candidates should have equal opportunity to present their platforms."
+  - "Political intimidation or voter suppression is not tolerated."
+  - "Civil discourse is expected in all political discussions."
+  - "News coverage should be fair and based on facts."
+  - "Personal attacks that avoid policy discussion are discouraged."
+  - "Respect for the democratic process is paramount."
+  - "Election results should be accepted by all participants."
+
+policy_areas:
+  - "Economic policy: taxes, spending, business regulation, job creation."
+  - "Social policy: healthcare, education, housing, social services."
+  - "Environmental policy: climate action, conservation, sustainability."
+  - "Public safety: law enforcement, emergency services, community safety."
+  - "Infrastructure: roads, public transit, utilities, broadband access."
+  - "Community development: parks, libraries, cultural programs."

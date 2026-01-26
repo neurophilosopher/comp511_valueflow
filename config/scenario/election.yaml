@@ -1,0 +1,180 @@
+# Election Scenario Configuration
+
+name: election
+description: "Simulates voter behavior and opinion formation in a political election"
+
+# Scenario premise
+premise: |
+  A local election is approaching. Voters are forming opinions based on
+  candidate policies, news coverage, and social discussions. Two candidates
+  with different policy platforms are competing for support.
+
+# Setting context (shared background information)
+setting:
+  name: "Community Election"
+  background:
+    - "A democratic community is preparing for an important local election."
+    - "Citizens value civic participation and informed decision-making."
+    - "The election will determine local leadership and policy direction."
+
+# Event context (current situation)
+event:
+  name: "Election Season"
+  context: |
+    The election campaign is in full swing. Candidates are sharing their
+    platforms, news outlets are reporting on the race, and voters are
+    discussing the issues with their neighbors. Election day is approaching.
+
+# Shared memories for ALL agents (injected at simulation start)
+shared_memories:
+  - "You are participating in an important local election."
+  - ${scenario.event.context}
+  - ${scenario.setting.background}
+
+# Initial observations (templates with {name} placeholder)
+initial_observations:
+  - "{name} considers the upcoming election and the choices ahead."
+  - "{name} reflects on what matters most in this election."
+
+# Define the roles available in this scenario
+roles:
+  - name: voter
+    description: "Citizens who will vote in the election"
+  - name: candidate
+    description: "Politicians running for office"
+  - name: news
+    description: "News outlet providing election coverage"
+    singular: true
+
+# Knowledge and event builders
+builders:
+  knowledge:
+    module: scenarios.election.knowledge
+    function: build_election_knowledge
+  events:
+    module: scenarios.election.events
+    function: generate_election_events
+
+# Agent configurations
+agents:
+  entities:
+    # Candidate agents
+    - name: Thomas Morrison
+      role: candidate
+      prefab: candidate_agent
+      params:
+        goal: "Win the election by persuading voters of conservative policy benefits"
+        partisan_type: conservative
+        policy_proposals:
+          - "Lower taxes to stimulate business growth"
+          - "Reduce government spending and regulation"
+          - "Support traditional community values"
+          - "Strengthen local law enforcement"
+        campaign_style: traditional
+
+    - name: Elena Rodriguez
+      role: candidate
+      prefab: candidate_agent
+      params:
+        goal: "Win the election by building a coalition around progressive change"
+        partisan_type: progressive
+        policy_proposals:
+          - "Invest in public education and healthcare"
+          - "Expand environmental protections"
+          - "Promote affordable housing initiatives"
+          - "Strengthen social safety net programs"
+        campaign_style: grassroots
+
+    # Voter agents with distinct personas
+    - name: Maria Chen
+      role: voter
+      prefab: voter_agent
+      params:
+        goal: "Vote for the candidate who best supports small business growth"
+        persona_context: "Small business owner, fiscally conservative, socially moderate. Worries about taxes and regulations affecting her restaurant."
+        communication_style: pragmatic
+        initial_lean: slight_conservative
+
+    - name: James Wright
+      role: voter
+      prefab: voter_agent
+      params:
+        goal: "Vote for the candidate who will best serve education and seniors"
+        persona_context: "Retired teacher, values education funding, progressive on social issues. Cares deeply about his pension and grandchildren's schools."
+        communication_style: thoughtful
+        initial_lean: progressive
+
+    - name: Sarah Miller
+      role: voter
+      prefab: voter_agent
+      params:
+        goal: "Make an informed decision based on environmental and economic policies"
+        persona_context: "Young professional, environmentally conscious, undecided voter. Works in tech, concerned about climate change and housing costs."
+        communication_style: analytical
+        initial_lean: undecided
+
+    - name: Robert Johnson
+      role: voter
+      prefab: voter_agent
+      params:
+        goal: "Vote for the candidate who understands working families"
+        persona_context: "Factory worker, concerned about job security, traditional values. Worried about outsourcing and wants to protect local industry."
+        communication_style: direct
+        initial_lean: slight_conservative
+
+    - name: Emily Davis
+      role: voter
+      prefab: voter_agent
+      params:
+        goal: "Choose the candidate with the best healthcare and community policies"
+        persona_context: "Healthcare worker, prioritizes public health, community-focused. Sees the impact of policy on patients daily."
+        communication_style: empathetic
+        initial_lean: slight_progressive
+
+    # News agent
+    - name: Local News
+      role: news
+      prefab: news_agent
+      params:
+        goal: "Provide fair and informative election coverage to the community"
+        outlet_style: local_journalism
+        headlines:
+          - "Election Race Heats Up: Candidates Present Competing Visions"
+          - "Voters Weigh In On Key Issues: Economy vs Environment"
+          - "Community Debates Healthcare Policy Approaches"
+          - "Small Business Owners Divided on Tax Proposals"
+          - "Education Funding Becomes Central Campaign Issue"
+
+# Game Master configuration
+game_master:
+  prefab: election_game_master
+  name: election_master
+  params:
+    candidates:
+      - Thomas Morrison
+      - Elena Rodriguez
+    election_rules:
+      - "All citizens have the right to express their political views"
+      - "Candidates should present their policies honestly"
+      - "Voters should consider issues carefully before deciding"
+      - "Civil discourse is expected during political discussions"
+    campaign_events:
+      - "town_hall"
+      - "debate"
+      - "rally"
+      - "endorsement"
+
+# Prefab mappings
+prefabs:
+  voter_agent:
+    _target_: scenarios.election.agents.VoterAgent
+  candidate_agent:
+    _target_: scenarios.election.agents.CandidateAgent
+  news_agent:
+    _target_: scenarios.election.agents.NewsAgent
+  election_game_master:
+    _target_: scenarios.election.game_masters.ElectionGameMaster
+
+# Data paths
+data:
+  knowledge_file: scenarios/election/data/knowledge.yaml
