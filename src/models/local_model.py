@@ -44,8 +44,8 @@ class LocalLanguageModel(language_model.LanguageModel):
         self._temperature = temperature
         self._max_tokens = max_tokens
         self._extra_kwargs = kwargs
-        self._model = None
-        self._tokenizer = None
+        self._model: Any = None
+        self._tokenizer: Any = None
 
     def _ensure_loaded(self) -> None:
         """Lazy load the model and tokenizer on first use."""
@@ -151,7 +151,7 @@ class LocalLanguageModel(language_model.LanguageModel):
             if terminator in response:
                 response = response.split(terminator)[0]
 
-        return response.strip()
+        return str(response.strip())
 
     def sample_choice(
         self,
