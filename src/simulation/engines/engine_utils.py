@@ -8,13 +8,9 @@ from __future__ import annotations
 
 import json
 import re
-from typing import TYPE_CHECKING
 
 from absl import logging
 from concordia.typing import entity as entity_lib
-
-if TYPE_CHECKING:
-    pass
 
 _TYPE_SKIP_THIS_STEP = "type: __SKIP_THIS_STEP__"
 

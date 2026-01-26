@@ -32,3 +32,5 @@ logging:
   raw_path: ${experiment.output_dir}/raw_log.json
   # Console output level
   level: INFO
+  # Log file for stdout/stderr capture (in addition to console)
+  log_file: ${experiment.output_dir}/run_experiment.log
