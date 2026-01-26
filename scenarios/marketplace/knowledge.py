@@ -11,6 +11,30 @@ from typing import Any, cast
 
 import yaml
 
+# Handle optional OmegaConf import for type conversion
+try:
+    from omegaconf import DictConfig, ListConfig, OmegaConf
+
+    HAS_OMEGACONF = True
+except ImportError:
+    HAS_OMEGACONF = False
+
+
+def _convert_omegaconf(obj: Any) -> Any:
+    """Convert OmegaConf objects to plain Python types.
+
+    Args:
+        obj: Object that may be an OmegaConf container.
+
+    Returns:
+        Plain Python dict/list if OmegaConf, otherwise unchanged.
+    """
+    if not HAS_OMEGACONF:
+        return obj
+    if isinstance(obj, DictConfig | ListConfig):
+        return OmegaConf.to_container(obj, resolve=True)
+    return obj
+
 
 def build_market_knowledge(
     agent_name: str,
@@ -27,6 +51,9 @@ def build_market_knowledge(
     Returns:
         List of knowledge strings to add to agent's memory.
     """
+    # Convert OmegaConf to plain dict if needed
+    scenario_params = _convert_omegaconf(scenario_params)
+
     knowledge: list[str] = []
 
     # Load static knowledge from YAML

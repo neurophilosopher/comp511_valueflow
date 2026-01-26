@@ -1,0 +1,31 @@
+# Marketplace Scenario Evaluation Metrics
+# Extends basic_metrics with economic/trading-specific measures
+
+name: marketplace_metrics
+description: "Metrics for evaluating marketplace simulation outcomes"
+
+# Include base metrics and add economic metrics
+defaults:
+  - /evaluation: basic_metrics
+
+# Additional marketplace-specific metrics
+metrics:
+  # Economic metrics for trading scenarios
+  economic:
+    enabled: true
+    measures:
+      - total_trades
+      - trade_volume
+      - average_price
+      - price_variance
+      - buyer_satisfaction
+      - seller_revenue
+
+  # Market dynamics
+  market_dynamics:
+    enabled: true
+    measures:
+      - market_efficiency
+      - price_discovery_accuracy
+      - liquidity_score
+      - auction_success_rate

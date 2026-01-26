@@ -4,7 +4,10 @@ This module provides common fixtures used across all tests, including:
 - Mock language models
 - Mock embedders
 - Mock memory banks
-- Test configurations
+- Generic test configurations (scenario-agnostic)
+
+Scenario-specific fixtures should be placed in:
+- scenarios/<scenario_name>/conftest.py
 """
 
 from __future__ import annotations
@@ -34,16 +37,16 @@ def mock_model() -> MockLanguageModel:
 
 @pytest.fixture
 def mock_model_with_responses() -> MockLanguageModel:
-    """Provide a mock language model with custom responses.
+    """Provide a mock language model with generic responses.
 
     Returns:
         MockLanguageModel with response mapping.
     """
     response_map = {
-        "situation": "I am in a marketplace looking at various goods.",
-        "options": "I can buy items, negotiate prices, or observe other traders.",
-        "best": "I should carefully evaluate the available items.",
-        "goal": "My goal is to find good deals within my budget.",
+        "situation": "I observe my current surroundings.",
+        "options": "I can take various actions or observe others.",
+        "best": "I should consider my options carefully.",
+        "goal": "I am working towards my objective.",
     }
     return MockLanguageModel(
         default_response="I observe my surroundings.",
@@ -80,7 +83,10 @@ def mock_memory_bank(embedder):
 
 @pytest.fixture
 def test_config() -> DictConfig:
-    """Provide a minimal test configuration.
+    """Provide a minimal, scenario-agnostic test configuration.
+
+    Uses generic BasicEntity and BasicGameMaster prefabs from src/entities/.
+    For scenario-specific configs, see scenarios/<name>/conftest.py.
 
     Returns:
         DictConfig with test settings.
@@ -117,127 +123,31 @@ def test_config() -> DictConfig:
             "agents": {
                 "entities": [
                     {
-                        "name": "TestBuyer",
-                        "role": "buyer",
-                        "prefab": "buyer_agent",
-                        "params": {"goal": "Test goal", "budget": 100},
+                        "name": "Agent1",
+                        "role": "participant",
+                        "prefab": "basic_entity",
+                        "params": {"goal": "Complete the test objective"},
                     },
                     {
-                        "name": "TestSeller",
-                        "role": "seller",
-                        "prefab": "seller_agent",
-                        "params": {"goal": "Sell items", "inventory": []},
+                        "name": "Agent2",
+                        "role": "participant",
+                        "prefab": "basic_entity",
+                        "params": {"goal": "Assist with the test"},
                     },
                 ],
             },
             "game_master": {
-                "prefab": "market_game_master",
-                "name": "test_gm",
+                "prefab": "basic_game_master",
+                "name": "test_narrator",
                 "params": {},
             },
             "prefabs": {
-                "buyer_agent": "scenarios.marketplace.agents.BuyerAgent",
-                "seller_agent": "scenarios.marketplace.agents.SellerAgent",
-                "market_game_master": "scenarios.marketplace.game_masters.MarketGameMaster",
-            },
-        },
-        "evaluation": {
-            "name": "basic_metrics",
-        },
-    }
-    return OmegaConf.create(config_dict)
-
-
-@pytest.fixture
-def marketplace_config() -> DictConfig:
-    """Provide a full marketplace scenario configuration.
-
-    Returns:
-        DictConfig with marketplace settings.
-    """
-    config_dict = {
-        "experiment": {
-            "name": "marketplace_test",
-            "seed": 42,
-            "output_dir": "./test_outputs/marketplace",
-        },
-        "simulation": {
-            "name": "sequential",
-            "engine": {"type": "sequential"},
-            "execution": {
-                "max_steps": 10,
-                "verbose": False,
-                "checkpoint": {"enabled": False},
-            },
-            "logging": {
-                "save_html": False,
-                "save_raw": False,
-                "level": "WARNING",
-            },
-        },
-        "model": {
-            "name": "mock",
-            "provider": "mock",
-            "model_name": "mock-model",
-            "parameters": {},
-        },
-        "scenario": {
-            "name": "marketplace",
-            "premise": "A bustling marketplace where traders gather.",
-            "agents": {
-                "entities": [
-                    {
-                        "name": "Alice",
-                        "role": "buyer",
-                        "prefab": "buyer_agent",
-                        "params": {
-                            "goal": "Find good deals",
-                            "budget": 500,
-                            "strategy": "value_seeker",
-                            "preferred_categories": ["electronics"],
-                        },
-                    },
-                    {
-                        "name": "Bob",
-                        "role": "seller",
-                        "prefab": "seller_agent",
-                        "params": {
-                            "goal": "Sell inventory",
-                            "inventory": [
-                                {
-                                    "item": "Widget",
-                                    "category": "electronics",
-                                    "base_price": 100,
-                                    "quantity": 5,
-                                }
-                            ],
-                            "pricing_strategy": "competitive",
-                        },
-                    },
-                    {
-                        "name": "Max",
-                        "role": "auctioneer",
-                        "prefab": "auctioneer_agent",
-                        "params": {
-                            "goal": "Facilitate trades",
-                            "auction_style": "english",
-                            "commission_rate": 0.05,
-                        },
-                    },
-                ],
-            },
-            "game_master": {
-                "prefab": "market_game_master",
-                "name": "market_master",
-                "params": {
-                    "market_rules": ["All trades must be fair"],
+                "basic_entity": {
+                    "_target_": "src.entities.agents.basic_entity.BasicEntity",
                 },
-            },
-            "prefabs": {
-                "buyer_agent": "scenarios.marketplace.agents.BuyerAgent",
-                "seller_agent": "scenarios.marketplace.agents.SellerAgent",
-                "auctioneer_agent": "scenarios.marketplace.agents.AuctioneerAgent",
-                "market_game_master": "scenarios.marketplace.game_masters.MarketGameMaster",
+                "basic_game_master": {
+                    "_target_": "src.entities.game_masters.basic_gm.BasicGameMaster",
+                },
             },
         },
         "evaluation": {
@@ -249,7 +159,7 @@ def marketplace_config() -> DictConfig:
 
 @pytest.fixture
 def multi_model_config() -> DictConfig:
-    """Provide a multi-model configuration.
+    """Provide a multi-model configuration (scenario-agnostic).
 
     Returns:
         DictConfig with multi-model settings.
@@ -289,8 +199,8 @@ def multi_model_config() -> DictConfig:
                 },
             },
             "entity_model_mapping": {
-                "Alice": "mock1",
-                "Bob": "mock2",
+                "Agent1": "mock1",
+                "Agent2": "mock2",
                 "_default_": "mock1",
             },
             "default_model": "mock1",
@@ -301,16 +211,16 @@ def multi_model_config() -> DictConfig:
             "agents": {
                 "entities": [
                     {
-                        "name": "Alice",
-                        "role": "buyer",
+                        "name": "Agent1",
+                        "role": "participant",
                         "prefab": "basic_entity",
-                        "params": {"goal": "Test"},
+                        "params": {"goal": "Test with model 1"},
                     },
                     {
-                        "name": "Bob",
-                        "role": "seller",
+                        "name": "Agent2",
+                        "role": "participant",
                         "prefab": "basic_entity",
-                        "params": {"goal": "Test"},
+                        "params": {"goal": "Test with model 2"},
                     },
                 ],
             },
@@ -319,8 +229,12 @@ def multi_model_config() -> DictConfig:
                 "name": "narrator",
             },
             "prefabs": {
-                "basic_entity": "src.entities.agents.basic_entity.BasicEntity",
-                "basic_game_master": "src.entities.game_masters.basic_gm.BasicGameMaster",
+                "basic_entity": {
+                    "_target_": "src.entities.agents.basic_entity.BasicEntity",
+                },
+                "basic_game_master": {
+                    "_target_": "src.entities.game_masters.basic_gm.BasicGameMaster",
+                },
             },
         },
         "evaluation": {

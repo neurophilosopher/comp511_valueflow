@@ -7,6 +7,9 @@ from omegaconf import DictConfig
 
 from src.simulation.simulators.base import BaseSimulator
 
+# Import marketplace_config from scenario-specific conftest
+pytest_plugins = ["scenarios.marketplace.conftest"]
+
 
 class ConcreteSimulator(BaseSimulator):
     """Concrete implementation of BaseSimulator for testing."""
@@ -44,8 +47,8 @@ class TestBaseSimulator:
         simulator = ConcreteSimulator(multi_model_config)
         mapping = simulator.get_entity_model_mapping()
 
-        assert mapping.get("Alice") == "mock1"
-        assert mapping.get("Bob") == "mock2"
+        assert mapping.get("Agent1") == "mock1"
+        assert mapping.get("Agent2") == "mock2"
         assert mapping.get("_default_") == "mock1"
 
     def test_build_instances(self, test_config: DictConfig):
@@ -53,13 +56,13 @@ class TestBaseSimulator:
         simulator = ConcreteSimulator(test_config)
         instances = simulator.build_instances()
 
-        # Should have buyer, seller, and game master
+        # Should have entities and game master
         assert len(instances) >= 2
 
         # Check entity names
         entity_names = [inst.params.get("name") for inst in instances]
-        assert "TestBuyer" in entity_names
-        assert "TestSeller" in entity_names
+        assert "Agent1" in entity_names
+        assert "Agent2" in entity_names
 
     def test_build_config(self, test_config: DictConfig):
         """Test building Concordia Config object."""
@@ -76,3 +79,75 @@ class TestBaseSimulator:
 
         with pytest.raises(RuntimeError, match="not initialized"):
             simulator.run()
+
+    def test_build_instances_with_shared_memories(self, test_config: DictConfig):
+        """Test that shared memories create an initializer instance."""
+        # Add shared_memories to config
+        test_config.scenario.shared_memories = [
+            "This is a shared memory.",
+            "All agents know this.",
+        ]
+
+        simulator = ConcreteSimulator(test_config)
+        instances = simulator.build_instances()
+
+        # Should have initializer at the start
+        initializer = instances[0]
+        assert initializer.prefab == "formative_memories_initializer__GameMaster"
+        assert initializer.params["shared_memories"] == [
+            "This is a shared memory.",
+            "All agents know this.",
+        ]
+
+    def test_flatten_shared_memories(self, test_config: DictConfig):
+        """Test that nested lists in shared_memories are flattened."""
+        # Add nested shared_memories to config
+        test_config.scenario.shared_memories = [
+            "Simple string.",
+            ["Nested item 1", "Nested item 2"],
+            "Another string.",
+        ]
+
+        simulator = ConcreteSimulator(test_config)
+        instances = simulator.build_instances()
+
+        # Check flattened memories in initializer
+        initializer = instances[0]
+        expected = ["Simple string.", "Nested item 1", "Nested item 2", "Another string."]
+        assert initializer.params["shared_memories"] == expected
+
+    def test_build_agent_knowledge_no_builder(self, test_config: DictConfig):
+        """Test build_agent_knowledge returns empty list when no builder configured."""
+        simulator = ConcreteSimulator(test_config)
+
+        # No builders configured in test_config
+        knowledge = simulator.build_agent_knowledge("TestAgent", "participant", {})
+        assert knowledge == []
+
+    def test_build_agent_knowledge_with_builder(self, marketplace_config: DictConfig):
+        """Test build_agent_knowledge calls the configured builder.
+
+        Uses marketplace_config fixture which has the knowledge builder configured.
+        """
+        simulator = ConcreteSimulator(marketplace_config)
+
+        params = {"budget": 500, "strategy": "value_seeker"}
+        knowledge = simulator.build_agent_knowledge("TestBuyer", "buyer", params)
+
+        # Should return knowledge from the builder
+        assert isinstance(knowledge, list)
+        assert len(knowledge) > 0
+
+    def test_player_specific_context_from_goals(self, test_config: DictConfig):
+        """Test that agent goals are added to player_specific_context."""
+        test_config.scenario.shared_memories = ["Shared memory."]
+
+        simulator = ConcreteSimulator(test_config)
+        instances = simulator.build_instances()
+
+        initializer = instances[0]
+        context = initializer.params["player_specific_context"]
+
+        # Check goals are captured for generic agents
+        assert context.get("Agent1") == "Complete the test objective"
+        assert context.get("Agent2") == "Assist with the test"

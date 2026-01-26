@@ -80,6 +80,33 @@ prefabs:
 - Knowledge injection uses `formative_memories_initializer__GameMaster` from Concordia
 - Entity-to-model mapping via `model.entity_model_mapping` or `_default_` key
 
+## Scenario Isolation
+
+**All scenario-specific code must be contained within:**
+- `config/scenario/<name>.yaml` - scenario configuration
+- `scenarios/<name>/` - implementation (agents, game_masters, knowledge, events, conftest.py)
+
+**Keep these files scenario-agnostic:**
+- `src/` - core framework code, no scenario-specific references
+- `tests/conftest.py` - generic fixtures using `BasicEntity`/`BasicGameMaster`
+- `config/evaluation/basic_metrics.yaml` - generic metrics only
+
+**Scenario-specific test fixtures** go in `scenarios/<name>/conftest.py`:
+```python
+# scenarios/marketplace/conftest.py
+@pytest.fixture
+def marketplace_config() -> DictConfig:
+    ...
+```
+
+**To use scenario fixtures in tests**, add pytest_plugins:
+```python
+# tests/test_simulators/test_something.py
+pytest_plugins = ["scenarios.marketplace.conftest"]
+```
+
+**Scenario-specific evaluation metrics** go in `scenarios/<name>/evaluation.yaml`
+
 ## Conventions
 
 - Commits: Use conventional commits format (`feat:`, `fix:`, `refactor:`)

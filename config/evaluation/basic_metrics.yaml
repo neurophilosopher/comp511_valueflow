@@ -1,4 +1,5 @@
 # Basic Evaluation Metrics Configuration
+# Generic metrics applicable to any scenario
 
 name: basic_metrics
 description: "Standard metrics for evaluating simulation outcomes"
@@ -30,17 +31,6 @@ metrics:
       - strategy_consistency
       - cooperation_score
       - competition_score
-
-  # Economic metrics (for marketplace scenarios)
-  economic:
-    enabled: true
-    measures:
-      - total_trades
-      - trade_volume
-      - average_price
-      - price_variance
-      - buyer_satisfaction
-      - seller_revenue
 
 # Evaluation timing
 evaluation:

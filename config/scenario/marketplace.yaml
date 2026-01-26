@@ -10,6 +10,33 @@ premise: |
   session is about to begin. The auctioneer will facilitate trades and
   ensure fair dealings.
 
+# Setting context (shared background information)
+setting:
+  name: "The Grand Marketplace"
+  background:
+    - "The Grand Marketplace is the central trading hub of the region."
+    - "Trading has occurred here for generations, with a strong tradition of fair dealing."
+    - "The marketplace is known for its diverse goods and competitive prices."
+
+# Event context (current situation)
+event:
+  name: "Market Day"
+  context: |
+    Today is a busy market day. Buyers are seeking deals while sellers
+    showcase their wares. The auctioneer stands ready to facilitate trades
+    and ensure fair dealings among all participants.
+
+# Shared memories for ALL agents (injected at simulation start)
+shared_memories:
+  - "You are participating in the Grand Marketplace trading session."
+  - ${scenario.event.context}
+  - ${scenario.setting.background}
+
+# Initial observations (templates with {name} placeholder)
+initial_observations:
+  - "{name} arrives at the marketplace as trading begins."
+  - "{name} surveys the bustling crowd of buyers and sellers."
+
 # Define the roles available in this scenario (optional, for validation)
 roles:
   - name: buyer

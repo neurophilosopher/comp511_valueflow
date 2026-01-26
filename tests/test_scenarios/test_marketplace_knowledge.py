@@ -108,3 +108,29 @@ class TestMarketKnowledge:
 
         # They should be different (at least in strategy-specific parts)
         assert text1 != text2
+
+    def test_omegaconf_conversion(self):
+        """Test that OmegaConf containers are properly converted."""
+        try:
+            from omegaconf import OmegaConf
+
+            # Create an OmegaConf dict like what would come from Hydra config
+            params = OmegaConf.create(
+                {
+                    "budget": 1000,
+                    "strategy": "collector",
+                    "preferred_categories": ["art", "antiques"],
+                }
+            )
+
+            knowledge = build_market_knowledge("OmegaAgent", "buyer", params)
+
+            assert isinstance(knowledge, list)
+            assert len(knowledge) > 0
+
+            # Check that the knowledge includes budget info
+            knowledge_text = " ".join(knowledge)
+            assert "1000" in knowledge_text
+        except ImportError:
+            # Skip test if OmegaConf not installed
+            pass

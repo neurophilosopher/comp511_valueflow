@@ -11,11 +11,13 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping
 from typing import Any, cast
 
+import concordia.prefabs.game_master as game_master_prefabs
 import numpy as np
 from concordia.language_model import language_model
 from concordia.typing import prefab as prefab_lib
+from concordia.utils import helper_functions
 from hydra.utils import instantiate
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, ListConfig, OmegaConf
 
 from src.simulation.simulation import Simulation
 
@@ -70,35 +72,102 @@ class BaseSimulator(ABC):
     def build_prefabs(self) -> dict[str, prefab_lib.Prefab]:
         """Build prefab instances from scenario configuration.
 
+        Merges Concordia's built-in prefabs with scenario-specific prefabs.
         Supports both new _target_ pattern and legacy string path pattern.
 
         Returns:
             Dictionary mapping prefab names to Prefab instances.
         """
-        scenario_config = self._config.scenario
-        prefabs: dict[str, prefab_lib.Prefab] = {}
+        # Load Concordia's built-in prefabs (includes formative_memories_initializer__GameMaster)
+        concordia_prefabs = helper_functions.get_package_classes(game_master_prefabs)
 
-        # Load prefabs from scenario config
+        # Load scenario-specific prefabs
+        scenario_config = self._config.scenario
+        scenario_prefabs: dict[str, prefab_lib.Prefab] = {}
+
         prefab_mappings = scenario_config.get("prefabs", {})
 
         for prefab_name, prefab_config in prefab_mappings.items():
             # New _target_ pattern
             if isinstance(prefab_config, DictConfig) and "_target_" in prefab_config:
-                prefabs[prefab_name] = instantiate(prefab_config)
+                scenario_prefabs[prefab_name] = instantiate(prefab_config)
             # Legacy string path pattern
             elif isinstance(prefab_config, str):
                 prefab_class = self._load_class(prefab_config)
-                prefabs[prefab_name] = prefab_class()
+                scenario_prefabs[prefab_name] = prefab_class()
             else:
                 raise ValueError(
                     f"Invalid prefab config for {prefab_name}: "
                     f"expected _target_ dict or string path, got {type(prefab_config)}"
                 )
 
-        return prefabs
+        # Merge: scenario prefabs override Concordia prefabs
+        return {**concordia_prefabs, **scenario_prefabs}
+
+    def build_agent_knowledge(
+        self,
+        agent_name: str,
+        agent_role: str,
+        params: dict[str, Any],
+    ) -> list[str]:
+        """Dynamically build agent knowledge using scenario builders.
+
+        Calls the knowledge builder function specified in scenario config
+        to generate role-specific and agent-specific knowledge.
+
+        Args:
+            agent_name: Name of the agent.
+            agent_role: Role of the agent as defined in the scenario config.
+            params: Agent parameters from config.
+
+        Returns:
+            List of knowledge strings for the agent's memory.
+        """
+        builders = self._config.scenario.get("builders", {})
+        knowledge_builder = builders.get("knowledge", {})
+
+        if not knowledge_builder:
+            return []
+
+        try:
+            module = importlib.import_module(knowledge_builder["module"])
+            func = getattr(module, knowledge_builder["function"])
+            result: list[str] = func(agent_name, agent_role, params)
+            return result
+        except (ImportError, AttributeError, KeyError) as e:
+            # Log warning but don't fail - knowledge is optional
+            import logging
+
+            logging.getLogger(__name__).warning(f"Failed to build knowledge for {agent_name}: {e}")
+            return []
+
+    def _flatten_shared_memories(self, memories: list[Any]) -> list[str]:
+        """Flatten nested memory lists into a single list of strings.
+
+        Handles OmegaConf lists and nested lists from variable interpolation.
+
+        Args:
+            memories: List that may contain strings or nested lists.
+
+        Returns:
+            Flat list of memory strings.
+        """
+        result: list[str] = []
+        for item in memories:
+            if isinstance(item, list | ListConfig):
+                result.extend(self._flatten_shared_memories(list(item)))
+            elif isinstance(item, str):
+                result.append(item)
+            else:
+                # Convert other types to string
+                result.append(str(item))
+        return result
 
     def build_instances(self) -> list[prefab_lib.InstanceConfig]:
         """Build instance configurations from scenario.
+
+        Creates entity instances, builds knowledge for each agent,
+        and creates an initializer game master to inject memories.
 
         Returns:
             List of InstanceConfig objects for all entities.
@@ -108,14 +177,24 @@ class BaseSimulator(ABC):
 
         # Build agent instances
         agents_config = scenario_config.get("agents", {})
+        entities = agents_config.get("entities", [])
+
+        # Track player-specific memories and context for initializer
+        player_specific_memories: dict[str, list[str]] = {}
+        player_specific_context: dict[str, str] = {}
 
         # Generic entity processing - works for any scenario
-        for entity in agents_config.get("entities", []):
-            entity_params = OmegaConf.to_container(entity.get("params", {}), resolve=True)
+        for entity in entities:
+            entity_params = cast(
+                dict[str, Any],
+                OmegaConf.to_container(entity.get("params", {}), resolve=True),
+            )
             entity_params["name"] = entity.name
+            entity_role = entity.get("role", "")
+
             # Pass scenario role to prefab if defined
-            if "role" in entity:
-                entity_params["scenario_role"] = entity.role
+            if entity_role:
+                entity_params["scenario_role"] = entity_role
 
             instances.append(
                 prefab_lib.InstanceConfig(
@@ -125,17 +204,63 @@ class BaseSimulator(ABC):
                 )
             )
 
+            # Build agent-specific knowledge using the knowledge builder
+            knowledge = self.build_agent_knowledge(
+                entity.name,
+                entity_role,
+                entity_params,
+            )
+            if knowledge:
+                player_specific_memories[entity.name] = knowledge
+
+            # Build player-specific context from goal or other params
+            if "goal" in entity_params:
+                player_specific_context[entity.name] = str(entity_params["goal"])
+
         # Build game master instance
         gm_config = scenario_config.get("game_master", {})
+        gm_name = gm_config.get("name", "game_master") if gm_config else "game_master"
+
         if gm_config:
+            gm_params = cast(
+                dict[str, Any],
+                OmegaConf.to_container(gm_config.get("params", {}), resolve=True),
+            )
             instances.append(
                 prefab_lib.InstanceConfig(
                     prefab=gm_config.prefab,
                     role=prefab_lib.Role.GAME_MASTER,
-                    params=OmegaConf.to_container(gm_config.get("params", {}), resolve=True)
-                    | {"name": gm_config.name},
+                    params=gm_params | {"name": gm_name},
                 )
             )
+
+        # Build shared memories from config (with variable resolution)
+        raw_memories = scenario_config.get("shared_memories", [])
+        if isinstance(raw_memories, DictConfig | ListConfig):
+            raw_shared_memories = cast(
+                list[Any],
+                OmegaConf.to_container(raw_memories, resolve=True),
+            )
+        else:
+            raw_shared_memories = list(raw_memories) if raw_memories else []
+        shared_memories = self._flatten_shared_memories(raw_shared_memories)
+
+        # Create initializer game master instance (inserted at start)
+        # This uses Concordia's built-in formative_memories_initializer prefab
+        if shared_memories or player_specific_memories:
+            initializer_instance = prefab_lib.InstanceConfig(
+                prefab="formative_memories_initializer__GameMaster",
+                role=prefab_lib.Role.INITIALIZER,
+                params={
+                    "name": "initial setup",
+                    "next_game_master_name": gm_name,
+                    "shared_memories": shared_memories,
+                    "player_specific_memories": player_specific_memories,
+                    "player_specific_context": player_specific_context,
+                },
+            )
+            # Insert at the beginning so it runs first
+            instances.insert(0, initializer_instance)
 
         return instances
 

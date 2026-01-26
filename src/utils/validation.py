@@ -202,6 +202,9 @@ def _validate_scenario_config(
     if "premise" not in scenario_config:
         warnings.append("scenario.premise not set, simulation may lack context")
 
+    # Validate knowledge system config (optional)
+    _validate_knowledge_config(scenario_config, errors, warnings)
+
     # Check agents configuration
     if "agents" not in scenario_config:
         errors.append("scenario.agents section is required")
@@ -240,6 +243,61 @@ def _validate_scenario_config(
         errors.append("scenario.prefabs mapping is required")
     else:
         _validate_prefabs_config(scenario_config.prefabs, errors, warnings)
+
+
+def _validate_knowledge_config(
+    scenario_config: DictConfig,
+    errors: list[str],
+    warnings: list[str],
+) -> None:
+    """Validate knowledge system configuration.
+
+    Args:
+        scenario_config: Scenario configuration.
+        errors: List to append errors to.
+        warnings: List to append warnings to.
+    """
+    # Validate setting config (optional)
+    if "setting" in scenario_config:
+        setting = scenario_config.setting
+        if "name" not in setting:
+            warnings.append("scenario.setting.name not set")
+        if "background" in setting and not isinstance(setting.background, list | tuple):
+            errors.append("scenario.setting.background must be a list of strings")
+
+    # Validate event config (optional)
+    if "event" in scenario_config:
+        event = scenario_config.event
+        if "name" not in event:
+            warnings.append("scenario.event.name not set")
+
+    # Validate shared_memories (optional)
+    if "shared_memories" in scenario_config:
+        memories = scenario_config.shared_memories
+        if not isinstance(memories, list | tuple):
+            errors.append("scenario.shared_memories must be a list")
+
+    # Validate initial_observations (optional)
+    if "initial_observations" in scenario_config:
+        observations = scenario_config.initial_observations
+        if not isinstance(observations, list | tuple):
+            errors.append("scenario.initial_observations must be a list")
+
+    # Validate builders config (optional)
+    if "builders" in scenario_config:
+        builders = scenario_config.builders
+        if "knowledge" in builders:
+            kb = builders.knowledge
+            if "module" not in kb:
+                errors.append("scenario.builders.knowledge.module is required")
+            if "function" not in kb:
+                errors.append("scenario.builders.knowledge.function is required")
+        if "events" in builders:
+            eb = builders.events
+            if "module" not in eb:
+                errors.append("scenario.builders.events.module is required")
+            if "function" not in eb:
+                errors.append("scenario.builders.events.function is required")
 
 
 def _validate_prefabs_config(
