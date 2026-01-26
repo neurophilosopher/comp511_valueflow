@@ -6,13 +6,13 @@ name: multi_model
 # Model registry - define all available models
 model_registry:
   gpt4:
-    _target_: concordia.language_model.gpt_model.GptLanguageModel
+    _target_: src.models.openai_model.OpenAILanguageModel
     model_name: gpt-4-turbo
     api_key: ${oc.env:OPENAI_API_KEY,}
     temperature: 0.7
 
   claude:
-    _target_: concordia.language_model.anthropic_model.AnthropicLanguageModel
+    _target_: src.models.anthropic_model.AnthropicLanguageModel
     model_name: claude-3-5-sonnet-20241022
     api_key: ${oc.env:ANTHROPIC_API_KEY,}
 

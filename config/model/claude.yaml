@@ -1,7 +1,7 @@
 # Claude Model Configuration
 
 name: claude
-_target_: concordia.language_model.anthropic_model.AnthropicLanguageModel
+_target_: src.models.anthropic_model.AnthropicLanguageModel
 model_name: claude-3-5-sonnet-20241022
 api_key: ${oc.env:ANTHROPIC_API_KEY,}
 temperature: 0.7
