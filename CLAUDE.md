@@ -10,50 +10,75 @@ uv sync
 # Or: pip install -e ".[dev]"
 
 # Run simulation with default config (marketplace scenario)
-python run_experiment.py
+uv run python run_experiment.py
 
 # Switch scenario/model/parameters
-python run_experiment.py scenario=debate model=claude
-python run_experiment.py simulation.execution.max_steps=50
+uv run python run_experiment.py scenario=debate model=claude
+uv run python run_experiment.py simulation.execution.max_steps=50
 
 # View resolved config without running
-python run_experiment.py --cfg job
+uv run python run_experiment.py --cfg job
 
 # Quick test with mock models (no API calls)
-python run_experiment.py --quick-test
+uv run python run_experiment.py --quick-test
 ```
 
 ## Testing
 
 ```bash
 # Run all tests
-pytest
+uv run pytest
 
 # Run single test file
-pytest tests/test_simulators/test_base_simulator.py
+uv run pytest tests/test_simulators/test_base_simulator.py
 
 # Run specific test
-pytest tests/test_simulators/test_base_simulator.py::TestBaseSimulator::test_build_prefabs -v
+uv run pytest tests/test_simulators/test_base_simulator.py::TestBaseSimulator::test_build_prefabs -v
 
 # With coverage
-pytest --cov=src --cov=scenarios
+uv run pytest --cov=src --cov=scenarios
 
 # Skip slow/integration tests
-pytest -m "not slow and not integration"
+uv run pytest -m "not slow and not integration"
 ```
 
 ## Code Quality
 
 ```bash
-# Pre-commit (ruff, mypy, bandit)
-pre-commit run --all-files
+# Pre-commit (ruff, mypy, bandit) - auto-fixes formatting/linting
+uv run pre-commit run --all-files --verbose
 
-# Type checking
-mypy src/ scenarios/
+# Type checking only
+uv run mypy src/ scenarios/
 
 # Linting only
-ruff check src/ scenarios/
+uv run ruff check src/ scenarios/
 ```
+
+## Commit Workflow
+
+**Always run pre-commit before committing:**
+
+```bash
+# 1. Stage changes
+git add <files>
+
+# 2. Run pre-commit (auto-fixes formatting, linting)
+uv run pre-commit run --all-files --verbose
+
+# 3. If hooks made fixes, re-stage and run again
+git add <fixed-files>
+uv run pre-commit run --all-files --verbose
+
+# 4. Only manually fix errors that can't be auto-resolved (mypy, bandit)
+
+# 5. Commit with conventional commit message
+git commit -m "feat: description"
+```
+
+**Auto-fix hooks**: ruff (linting), ruff-format, trailing-whitespace, end-of-file-fixer, mixed-line-ending
+
+**Manual-fix hooks**: mypy (type errors), bandit (security issues)
 
 ## Architecture Overview
 

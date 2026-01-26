@@ -48,7 +48,11 @@ def marketplace_config() -> DictConfig:
             "roles": [
                 {"name": "buyer", "description": "Agents who purchase goods"},
                 {"name": "seller", "description": "Agents who sell goods"},
-                {"name": "auctioneer", "description": "Agent who facilitates trades", "singular": True},
+                {
+                    "name": "auctioneer",
+                    "description": "Agent who facilitates trades",
+                    "singular": True,
+                },
             ],
             "builders": {
                 "knowledge": {
