@@ -95,8 +95,15 @@ uv run pre-commit run --all-files && uv run pytest
 
 ## Session State (for Claude Code)
 
-Use `SESSION_STATE.md` (gitignored) to maintain context across a work session:
+Use `SESSION_STATE.md` (gitignored) to maintain context across a work session.
 
+**Auto-read**: At session start, check if `SESSION_STATE.md` exists and read it to restore context.
+
+**Auto-update**: After completing significant subtasks (commits, refactors, feature completion), offer to update SESSION_STATE.md with current progress.
+
+**Manual clear**: User decides when to clear - typically at start of unrelated work or after a clean commit.
+
+**Template:**
 ```markdown
 # Session State
 
@@ -116,9 +123,6 @@ Brief description of current task
 ## Open Questions
 - Question for user about X?
 ```
-
-**When to update**: After completing subtasks, before context gets long, when switching focus.
-**When to clear**: Start of new unrelated task, after committing a coherent chunk of work.
 
 ## Architecture Overview
 
