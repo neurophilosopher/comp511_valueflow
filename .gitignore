@@ -182,3 +182,6 @@ tmp/
 temp/
 *.tmp
 .schemas
+
+# Claude Code session state (temporary, per-session context)
+SESSION_STATE.md

@@ -2,12 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Setup (after cloning)
+
+```bash
+uv sync                          # Install dependencies
+uv run pre-commit install        # Enable git hooks for auto-validation on commit
+```
+
 ## Build & Run Commands
 
 ```bash
-# Install dependencies (uv recommended)
-uv sync
-# Or: pip install -e ".[dev]"
 
 # Run simulation with default config (marketplace scenario)
 uv run python run_experiment.py
@@ -81,6 +85,40 @@ uv run cz c
 **Manual-fix hooks**: mypy (type errors), bandit (security issues)
 
 **Commit types**: feat, fix, docs, style, refactor, perf, test, build, ci, chore
+
+**Quick validation** (run before PRs):
+```bash
+uv run pre-commit run --all-files && uv run pytest
+```
+
+**Coverage threshold**: 70% minimum (configured in pyproject.toml)
+
+## Session State (for Claude Code)
+
+Use `SESSION_STATE.md` (gitignored) to maintain context across a work session:
+
+```markdown
+# Session State
+
+## Current Focus
+Brief description of current task
+
+## Modified Files
+- path/to/file.py - what changed
+
+## Decisions Made
+- Chose approach X because Y
+
+## Next Steps
+- [ ] Pending task 1
+- [ ] Pending task 2
+
+## Open Questions
+- Question for user about X?
+```
+
+**When to update**: After completing subtasks, before context gets long, when switching focus.
+**When to clear**: Start of new unrelated task, after committing a coherent chunk of work.
 
 ## Architecture Overview
 
