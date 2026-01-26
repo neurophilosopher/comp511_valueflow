@@ -1,7 +1,7 @@
 # GPT-4 Model Configuration
 
 name: gpt4
-_target_: concordia.language_model.gpt_model.GptLanguageModel
+_target_: src.models.openai_model.OpenAILanguageModel
 model_name: gpt-4o-mini
 api_key: ${oc.env:OPENAI_API_KEY,}
 temperature: 0.7

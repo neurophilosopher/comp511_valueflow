@@ -5,5 +5,6 @@ steps are executed (sequential, parallel, etc.).
 """
 
 from src.simulation.engines.base import BaseEngine
+from src.simulation.engines.engine_utils import action_spec_parser, patch_concordia_parser
 
-__all__ = ["BaseEngine"]
+__all__ = ["BaseEngine", "action_spec_parser", "patch_concordia_parser"]

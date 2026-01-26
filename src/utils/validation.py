@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from omegaconf import ListConfig
+
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
@@ -262,7 +264,9 @@ def _validate_knowledge_config(
         setting = scenario_config.setting
         if "name" not in setting:
             warnings.append("scenario.setting.name not set")
-        if "background" in setting and not isinstance(setting.background, list | tuple):
+        if "background" in setting and not isinstance(
+            setting.background, list | tuple | ListConfig
+        ):
             errors.append("scenario.setting.background must be a list of strings")
 
     # Validate event config (optional)
@@ -274,13 +278,13 @@ def _validate_knowledge_config(
     # Validate shared_memories (optional)
     if "shared_memories" in scenario_config:
         memories = scenario_config.shared_memories
-        if not isinstance(memories, list | tuple):
+        if not isinstance(memories, list | tuple | ListConfig):
             errors.append("scenario.shared_memories must be a list")
 
     # Validate initial_observations (optional)
     if "initial_observations" in scenario_config:
         observations = scenario_config.initial_observations
-        if not isinstance(observations, list | tuple):
+        if not isinstance(observations, list | tuple | ListConfig):
             errors.append("scenario.initial_observations must be a list")
 
     # Validate builders config (optional)

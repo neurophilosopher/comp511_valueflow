@@ -145,6 +145,20 @@ pytest_plugins = ["scenarios.marketplace.conftest"]
 
 **Scenario-specific evaluation metrics** go in `scenarios/<name>/evaluation.yaml`
 
+## Concordia Customizations
+
+**Do NOT modify files in the `concordia/` submodule directly.** Instead, create custom implementations in `src/` and monkey-patch at runtime.
+
+**Custom engine utilities** in `src/simulation/engines/engine_utils.py`:
+- `action_spec_parser`: Fixed version that handles LLM responses returning non-dict JSON
+- `patch_concordia_parser()`: Called during `BaseSimulator.setup()` to apply the fix
+
+**Pattern for adding Concordia fixes:**
+1. Create the fix in `src/simulation/engines/` or appropriate `src/` location
+2. Export from `__init__.py`
+3. Apply via monkey-patch in `BaseSimulator.setup()` or similar initialization point
+4. Document in this section
+
 ## Conventions
 
 - Commits: Use conventional commits format (`feat:`, `fix:`, `refactor:`)

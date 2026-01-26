@@ -19,6 +19,7 @@ from concordia.utils import helper_functions
 from hydra.utils import instantiate
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
+from src.simulation.engines import patch_concordia_parser
 from src.simulation.simulation import Simulation
 
 
@@ -304,6 +305,9 @@ class BaseSimulator(ABC):
 
         This method creates models, embedder, and the Simulation instance.
         """
+        # Apply Concordia patches for LLM compatibility
+        patch_concordia_parser()
+
         models = self.create_models()
         self._embedder = self.create_embedder()
 
