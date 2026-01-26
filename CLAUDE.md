@@ -72,13 +72,15 @@ uv run pre-commit run --all-files --verbose
 
 # 4. Only manually fix errors that can't be auto-resolved (mypy, bandit)
 
-# 5. Commit with conventional commit message
-git commit -m "feat: description"
+# 5. Commit using commitizen for interactive conventional commit prompt
+uv run cz c
 ```
 
 **Auto-fix hooks**: ruff (linting), ruff-format, trailing-whitespace, end-of-file-fixer, mixed-line-ending
 
 **Manual-fix hooks**: mypy (type errors), bandit (security issues)
+
+**Commit types**: feat, fix, docs, style, refactor, perf, test, build, ci, chore
 
 ## Architecture Overview
 
