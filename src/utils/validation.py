@@ -180,6 +180,8 @@ def _validate_target_model_spec(
         "concordia.language_model.ollama_model.OllamaLanguageModel": "ollama",
         "src.utils.testing.MockLanguageModel": "mock",
         "src.models.local_model.LocalLanguageModel": "local",
+        "src.models.openai_model.OpenAILanguageModel": "openai",
+        "src.models.anthropic_model.AnthropicLanguageModel": "anthropic",
     }
 
     if target not in known_targets:
