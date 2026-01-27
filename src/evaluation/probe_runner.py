@@ -71,6 +71,11 @@ class ProbeRunner:
                 else:
                     metric_dict = metric_config
 
+                # Skip aggregate-style metrics (no prompt_template = not a probe)
+                if "prompt_template" not in metric_dict:
+                    logger.debug(f"Skipping '{name}': no prompt_template (aggregate metric)")
+                    continue
+
                 probe = create_probe(name, metric_dict)
                 probes.append(probe)
                 logger.debug(
