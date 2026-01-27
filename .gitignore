@@ -137,7 +137,8 @@ cython_debug/
 
 # IDE
 .idea/
-.vscode/
+.vscode/settings.json  # Personal settings (interpreter paths)
+# Note: .vscode/extensions.json is committed (shared recommendations)
 *.swp
 *.swo
 *~
@@ -163,6 +164,7 @@ checkpoints/
 *.json
 !config/**/*.json
 !scenarios/**/data/*.json
+!.vscode/extensions.json
 
 # Secrets
 *.pem
