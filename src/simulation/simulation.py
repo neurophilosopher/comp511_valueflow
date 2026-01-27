@@ -9,9 +9,10 @@ from __future__ import annotations
 import copy
 import functools
 import json
+import logging
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Any, TypeAlias, cast
+from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 import numpy as np
 from concordia.associative_memory import basic_associative_memory as associative_memory
@@ -25,6 +26,11 @@ from concordia.typing import simulation as simulation_lib
 from concordia.utils import helper_functions as helper_functions_lib
 from concordia.utils import html as html_lib
 from omegaconf import DictConfig
+
+if TYPE_CHECKING:
+    from src.evaluation.probe_runner import ProbeRunner
+
+logger = logging.getLogger(__name__)
 
 Config: TypeAlias = prefab_lib.Config
 Role: TypeAlias = prefab_lib.Role
@@ -47,6 +53,7 @@ class Simulation(simulation_lib.Simulation):
         embedder: Callable[[str], np.ndarray],
         engine: engine_lib.Engine | None = None,
         hydra_config: DictConfig | None = None,
+        probe_runner: ProbeRunner | None = None,
     ) -> None:
         """Initialize the simulation.
 
@@ -57,6 +64,7 @@ class Simulation(simulation_lib.Simulation):
             embedder: Function to embed text into vectors.
             engine: Simulation engine (defaults to Sequential).
             hydra_config: Optional Hydra configuration for additional settings.
+            probe_runner: Optional ProbeRunner for evaluation probes.
         """
         self._config: Config = config
         self._models = models
@@ -64,6 +72,7 @@ class Simulation(simulation_lib.Simulation):
         self._embedder = embedder
         self._engine = engine or sequential.Sequential()
         self._hydra_config = hydra_config
+        self._probe_runner = probe_runner
 
         self.game_masters: list[entity_lib.Entity] = []
         self.entities: list[entity_lib.Entity] = []
@@ -393,6 +402,14 @@ class Simulation(simulation_lib.Simulation):
             step: Current simulation step.
             checkpoint_path: Directory to save checkpoint.
         """
+        # Run probes at checkpoint if probe_runner is configured
+        if self._probe_runner:
+            try:
+                self._probe_runner.run_probes(self.entities, step)
+                logger.debug(f"Step {step}: Ran probes on {len(self.entities)} entities")
+            except Exception as e:
+                logger.warning(f"Step {step}: Failed to run probes: {e}")
+
         checkpoint_data = self.make_checkpoint_data()
 
         if self._get_state_callback:

@@ -7,8 +7,10 @@ for all simulator implementations, handling Hydra config integration.
 from __future__ import annotations
 
 import importlib
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping
+from pathlib import Path
 from typing import Any, cast
 
 import concordia.prefabs.game_master as game_master_prefabs
@@ -19,8 +21,11 @@ from concordia.utils import helper_functions
 from hydra.utils import instantiate
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
+from src.evaluation import ProbeRunner
 from src.simulation.engines import patch_concordia_parser
 from src.simulation.simulation import Simulation
+
+logger = logging.getLogger(__name__)
 
 
 class BaseSimulator(ABC):
@@ -43,6 +48,7 @@ class BaseSimulator(ABC):
         self._simulation: Simulation | None = None
         self._model: language_model.LanguageModel | None = None
         self._embedder: Callable[[str], np.ndarray] | None = None
+        self._probe_runner: ProbeRunner | None = None
 
     @property
     def config(self) -> DictConfig:
@@ -284,6 +290,56 @@ class BaseSimulator(ABC):
         )
         return dict(mapping) if mapping else {"_default_": model_config.default_model}
 
+    def get_agent_role_mapping(self) -> dict[str, str]:
+        """Get agent name to role mapping from configuration.
+
+        Used by ProbeRunner to determine which probes apply to which agents.
+
+        Returns:
+            Dictionary mapping agent names to their scenario roles.
+        """
+        role_mapping: dict[str, str] = {}
+        agents_config = self._config.scenario.get("agents", {})
+        entities = agents_config.get("entities", [])
+
+        for entity in entities:
+            role = entity.get("role", "")
+            if role:
+                role_mapping[entity.name] = role
+
+        return role_mapping
+
+    def _create_probe_runner(self) -> ProbeRunner | None:
+        """Create ProbeRunner if evaluation config exists.
+
+        Returns:
+            ProbeRunner instance or None if no evaluation config.
+        """
+        evaluation_config = self._config.get("evaluation")
+        if not evaluation_config:
+            logger.debug("No evaluation config found, skipping probe setup")
+            return None
+
+        metrics = evaluation_config.get("metrics", {})
+        if not metrics:
+            logger.debug("No metrics defined in evaluation config")
+            return None
+
+        # Get output directory from experiment config (Hydra sets this)
+        output_dir = self._config.experiment.get("output_dir", "outputs")
+        output_path = Path(output_dir)
+
+        role_mapping = self.get_agent_role_mapping()
+
+        probe_runner = ProbeRunner(
+            config=evaluation_config,
+            output_dir=output_path,
+            role_mapping=role_mapping,
+        )
+
+        logger.info(f"Created ProbeRunner with {len(probe_runner.probes)} probes")
+        return probe_runner
+
     def build_config(self) -> prefab_lib.Config:
         """Build the Concordia Config object.
 
@@ -303,13 +359,16 @@ class BaseSimulator(ABC):
     def setup(self) -> None:
         """Set up the simulation by creating all components.
 
-        This method creates models, embedder, and the Simulation instance.
+        This method creates models, embedder, ProbeRunner, and the Simulation instance.
         """
         # Apply Concordia patches for LLM compatibility
         patch_concordia_parser()
 
         models = self.create_models()
         self._embedder = self.create_embedder()
+
+        # Create ProbeRunner if evaluation config exists
+        self._probe_runner = self._create_probe_runner()
 
         concordia_config = self.build_config()
         entity_model_mapping = self.get_entity_model_mapping()
@@ -320,6 +379,7 @@ class BaseSimulator(ABC):
             entity_to_model=entity_model_mapping,
             embedder=self._embedder,
             hydra_config=self._config,
+            probe_runner=self._probe_runner,
         )
 
     def run(self) -> str | list[Mapping[str, Any]]:

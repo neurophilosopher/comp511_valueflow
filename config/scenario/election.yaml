@@ -1,5 +1,9 @@
 # Election Scenario Configuration
 
+# Note: Use evaluation=election override when running this scenario
+# defaults:
+#   - /evaluation: election  # Doesn't auto-override root defaults
+
 name: election
 description: "Simulates voter behavior and opinion formation in a political election"
 
