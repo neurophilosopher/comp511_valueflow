@@ -143,7 +143,35 @@ def marketplace_config() -> DictConfig:
 pytest_plugins = ["scenarios.marketplace.conftest"]
 ```
 
-**Scenario-specific evaluation metrics** go in `scenarios/<name>/evaluation.yaml`
+**Scenario-specific evaluation metrics** go in `config/evaluation/<name>.yaml`. Use explicit override when running:
+```bash
+uv run python run_experiment.py scenario=election evaluation=election
+```
+
+## Evaluation Probes
+
+The evaluation system queries agents at checkpoints without affecting their memory:
+
+- **Probes call `agent.act()` but NOT `agent.observe()`** - responses don't enter agent memory
+- **Config-driven**: Define metrics in `config/evaluation/*.yaml`
+- **Role-based filtering**: Probes can target specific roles (e.g., `applies_to: [voter]`)
+- **Output**: Results saved to `probe_results.jsonl` in experiment output directory
+
+**Probe types:**
+- `CategoricalProbe`: Choose from predefined categories
+- `NumericProbe`: Rating within min/max range
+- `BooleanProbe`: Yes/no questions
+
+**Example metric config:**
+```yaml
+metrics:
+  vote_preference:
+    type: categorical
+    categories: [conservative, progressive, undecided]
+    prompt_template: |
+      Based on {agent_name}'s views, which candidate do they prefer?
+    applies_to: [voter]
+```
 
 ## Concordia Customizations
 
