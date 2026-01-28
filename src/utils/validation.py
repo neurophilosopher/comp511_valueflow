@@ -321,24 +321,22 @@ def _validate_prefabs_config(
         warnings: List to append warnings to.
     """
     for prefab_name, prefab_spec in prefabs_config.items():
+        name = str(prefab_name)  # Ensure string for f-string formatting
         # New _target_ pattern
         if hasattr(prefab_spec, "get") and "_target_" in prefab_spec:
             target = prefab_spec.get("_target_", "")
             if not target or "." not in target:
                 errors.append(
-                    f"scenario.prefabs.{prefab_name}._target_ must be a valid "
+                    f"scenario.prefabs.{name}._target_ must be a valid "
                     "fully-qualified class path"
                 )
         # Legacy string path pattern
         elif isinstance(prefab_spec, str):
             if "." not in prefab_spec:
-                errors.append(
-                    f"scenario.prefabs.{prefab_name} must be a valid fully-qualified class path"
-                )
+                errors.append(f"scenario.prefabs.{name} must be a valid fully-qualified class path")
         else:
             errors.append(
-                f"scenario.prefabs.{prefab_name} must be either a _target_ dict "
-                "or a string class path"
+                f"scenario.prefabs.{name} must be either a _target_ dict " "or a string class path"
             )
 
 

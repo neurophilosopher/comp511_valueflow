@@ -108,7 +108,9 @@ class TeeStdout:
             original_stdout: The original stdout stream (defaults to sys.stdout).
         """
         self.file_path = file_path
-        self.original_stdout: TextIO = original_stdout or sys.__stdout__
+        self.original_stdout: TextIO = (
+            original_stdout if original_stdout is not None else sys.__stdout__
+        )  # type: ignore[assignment]
         self.file: TextIO | None = None
 
     def __enter__(self) -> TeeStdout:
