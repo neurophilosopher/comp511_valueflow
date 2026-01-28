@@ -34,3 +34,6 @@ logging:
   level: INFO
   # Log file for stdout/stderr capture (in addition to console)
   log_file: ${experiment.output_dir}/run_experiment.log
+  # Structured event log for simulation events (clean format for LLM training)
+  # Format: "both" (default), "text", "jsonl", or null to disable
+  event_log_format: both

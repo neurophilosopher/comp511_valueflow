@@ -46,7 +46,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.simulation.simulators.multi_model import MultiModelSimulator
 from src.utils.config_helpers import get_output_paths
-from src.utils.logging_setup import setup_logging
+from src.utils.event_logger import process_raw_log
+from src.utils.logging_setup import TeeStdout, setup_logging
 from src.utils.validation import ConfigValidationError, validate_config
 
 # Load environment variables from .env file
@@ -139,17 +140,45 @@ def main(config: DictConfig) -> float | None:
     logger.info("Initializing simulator...")
     simulator = MultiModelSimulator(config)
 
+    # Get logging config
+    sim_config = config.simulation
+    event_log_format = sim_config.logging.get("event_log_format")
+    output_dir = Path(config.experiment.output_dir)
+
+    # Set up raw stdout capture for event logging
+    raw_log_path = output_dir / "run_experiment.log"
+
     try:
         # Setup simulation (creates models, embedder, simulation instance)
         logger.info("Setting up simulation...")
         simulator.setup()
 
-        # Run simulation
+        # Run simulation with stdout capture
         logger.info("Starting simulation...")
-        result = simulator.run()
+        with TeeStdout(raw_log_path):
+            result = simulator.run()
 
         # Save results
         save_results(config, result)
+
+        # Post-process raw log into structured events if configured
+        if event_log_format and raw_log_path.exists():
+            try:
+                if event_log_format == "both":
+                    # Generate both text and jsonl formats
+                    process_raw_log(raw_log_path, format="text")
+                    process_raw_log(raw_log_path, format="jsonl")
+                    logger.info(
+                        f"Structured event logs saved to: {output_dir}/simulation_events.txt and .jsonl"
+                    )
+                else:
+                    process_raw_log(raw_log_path, format=event_log_format)
+                    suffix = "jsonl" if event_log_format == "jsonl" else "txt"
+                    logger.info(
+                        f"Structured event log saved to: {output_dir}/simulation_events.{suffix}"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to generate structured event log: {e}")
 
         logger.info("Simulation completed successfully!")
 
