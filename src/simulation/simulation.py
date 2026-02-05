@@ -378,19 +378,25 @@ class Simulation(simulation_lib.Simulation):
 
         # Save game master states
         for gm in self.game_masters:
-            if not isinstance(gm, entity_component.EntityWithComponents):
-                continue
             prefab_config = self.get_entity_prefab_config(gm.name)
             if not prefab_config:
                 print(f"Warning: Prefab config not found for game master {gm.name}")
                 continue
 
-            game_masters_data[gm.name] = {
-                "prefab_type": prefab_config.prefab,
-                "entity_params": prefab_config.params,
-                "role": prefab_config.role.name,
-                "components": gm.get_state(),
-            }
+            if isinstance(gm, entity_component.EntityWithComponents):
+                game_masters_data[gm.name] = {
+                    "prefab_type": prefab_config.prefab,
+                    "entity_params": prefab_config.params,
+                    "role": prefab_config.role.name,
+                    "components": gm.get_state(),
+                }
+            elif hasattr(gm, "get_state"):
+                game_masters_data[gm.name] = {
+                    "prefab_type": prefab_config.prefab,
+                    "entity_params": prefab_config.params,
+                    "role": prefab_config.role.name,
+                    "state": gm.get_state(),
+                }
 
         self._checkpoint_counter += 1
         return checkpoint_data

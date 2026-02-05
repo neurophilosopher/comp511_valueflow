@@ -7,7 +7,6 @@ from src.environments.social_media.analysis import (
     find_transmission_chains,
 )
 from src.environments.social_media.app import Post, SocialMediaApp
-from src.environments.social_media.concordia_gm import ConcordiaSocialMediaGameMaster
 from src.environments.social_media.engine import (
     ActionResult,
     SocialMediaEngine,
@@ -21,7 +20,6 @@ __all__ = [
     "SocialMediaApp",
     "SocialMediaEngine",
     "SocialMediaGameMaster",
-    "ConcordiaSocialMediaGameMaster",
     "ActionResult",
     "parse_action",
     "execute_action",

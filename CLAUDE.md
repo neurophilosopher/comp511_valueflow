@@ -46,4 +46,5 @@ Brief description of current task
 If imports are slow (1+ min), the venv is likely on `/mnt/c`. Use a WSL-native venv:
 ```bash
 export UV_PROJECT_ENVIRONMENT=~/venvs/simulator
+uv sync  # re-sync into the WSL-native location
 ```

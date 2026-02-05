@@ -1,11 +1,23 @@
 """Tests for SocialMediaEngine and action parsing."""
 
+from concordia.environment import engine as engine_lib
+
 from src.environments.social_media.app import SocialMediaApp
 from src.environments.social_media.engine import (
     ActionResult,
+    SocialMediaEngine,
     execute_action,
     parse_action,
 )
+
+
+class TestSocialMediaEngine:
+    """Tests for SocialMediaEngine type conformance."""
+
+    def test_engine_inherits_from_abc(self) -> None:
+        """Test that SocialMediaEngine is an instance of Engine ABC."""
+        engine = SocialMediaEngine()
+        assert isinstance(engine, engine_lib.Engine)
 
 
 class TestParseAction:

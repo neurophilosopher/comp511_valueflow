@@ -9,9 +9,10 @@ from typing import TYPE_CHECKING, Any
 from concordia.agents import entity_agent_with_logging
 from concordia.associative_memory import basic_associative_memory
 from concordia.language_model import language_model
+from concordia.typing import entity as entity_lib
 from concordia.typing import prefab as prefab_lib
 
-from src.environments.social_media.concordia_gm import ConcordiaSocialMediaGameMaster
+from src.environments.social_media.game_master import SocialMediaGameMaster
 
 if TYPE_CHECKING:
     from src.environments.social_media.app import SocialMediaApp
@@ -21,8 +22,8 @@ if TYPE_CHECKING:
 class MisinformationGameMaster(prefab_lib.Prefab):
     """Game master for misinformation spread scenario.
 
-    This wraps ConcordiaSocialMediaGameMaster to work with run_experiment.py.
-    Uses parallel execution where all agents act each step.
+    Uses SocialMediaGameMaster which creates a minimal entity that holds
+    the SocialMediaApp. The SocialMediaEngine handles all simulation logic.
     """
 
     description: str = "Game master for social media misinformation simulation."
@@ -38,9 +39,7 @@ class MisinformationGameMaster(prefab_lib.Prefab):
 
     entities: Sequence[entity_agent_with_logging.EntityAgentWithLogging] = ()
 
-    _base_gm: ConcordiaSocialMediaGameMaster | None = dataclasses.field(
-        default=None, repr=False
-    )
+    _base_gm: SocialMediaGameMaster | None = dataclasses.field(default=None, repr=False)
 
     @property
     def app(self) -> SocialMediaApp:
@@ -53,13 +52,13 @@ class MisinformationGameMaster(prefab_lib.Prefab):
         self,
         model: language_model.LanguageModel,
         memory_bank: basic_associative_memory.AssociativeMemoryBank,
-    ) -> entity_agent_with_logging.EntityAgentWithLogging:
+    ) -> entity_lib.EntityWithLogging:
         """Build the game master."""
-        # Create the Concordia-compatible game master
-        self._base_gm = ConcordiaSocialMediaGameMaster(
+        # Create the social media game master
+        self._base_gm = SocialMediaGameMaster(
             params=self.params,
             entities=self.entities,
         )
 
-        # Build and return the entity
+        # Build and return the minimal entity (holds app reference)
         return self._base_gm.build(model, memory_bank)

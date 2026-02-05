@@ -1,6 +1,7 @@
 """Tests for SocialMediaGameMaster."""
 
 import pytest
+from concordia.typing import entity as entity_lib
 
 from src.environments.social_media.game_master import (
     SocialMediaGameMaster,
@@ -25,6 +26,7 @@ class TestSocialMediaGameMaster:
 
         assert gm.app is not None
         assert entity.name == "test_gm"
+        assert isinstance(entity, entity_lib.EntityWithLogging)
 
     def test_build_initializes_follower_graph(self) -> None:
         """Test that build sets up initial follower graph."""

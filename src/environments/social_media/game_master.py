@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import dataclasses
+import functools
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 from concordia.agents import entity_agent_with_logging
 from concordia.associative_memory import basic_associative_memory
 from concordia.language_model import language_model
+from concordia.typing import entity as entity_lib
 from concordia.typing import prefab as prefab_lib
 
 from src.environments.social_media.app import SocialMediaApp
@@ -54,7 +56,7 @@ class SocialMediaGameMaster(prefab_lib.Prefab):
         self,
         model: language_model.LanguageModel,
         memory_bank: basic_associative_memory.AssociativeMemoryBank,
-    ) -> entity_agent_with_logging.EntityAgentWithLogging:
+    ) -> entity_lib.EntityWithLogging:
         """Build the social media game master.
 
         Note: The model and memory_bank are not used for social media GM
@@ -108,7 +110,7 @@ class SocialMediaGameMaster(prefab_lib.Prefab):
         return _MinimalGameMasterEntity(name=name, app=self._app)
 
 
-class _MinimalGameMasterEntity:
+class _MinimalGameMasterEntity(entity_lib.EntityWithLogging):
     """Minimal game master entity for social media simulation.
 
     This entity just holds state and provides logging interface.
@@ -126,12 +128,17 @@ class _MinimalGameMasterEntity:
         self._app = app
         self._last_log: dict[str, Any] = {}
 
-    @property
+    @functools.cached_property
     def name(self) -> str:
         """Get entity name."""
         return self._name
 
-    def act(self, action_spec: Any) -> str:
+    @property
+    def app(self) -> SocialMediaApp:
+        """Get the social media app instance."""
+        return self._app
+
+    def act(self, action_spec: entity_lib.ActionSpec = entity_lib.DEFAULT_ACTION_SPEC) -> str:
         """No-op act - engine handles all logic."""
         return ""
 

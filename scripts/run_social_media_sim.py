@@ -150,12 +150,16 @@ def run_mock_simulation(max_steps: int = 5, verbose: bool = True) -> dict:
         create_mock_agent("Frank", "New user still figuring out the platform."),
     ]
 
-    # Create engine
-    engine = SocialMediaEngine(app)
+    # Create engine (gets app from game master at runtime)
+    engine = SocialMediaEngine()
 
-    # Create a minimal game master entity for logging
+    # Create a minimal game master entity that holds the app
     class MinimalGM:
         name = "social_media_gm"
+
+        @property
+        def app(self) -> SocialMediaApp:
+            return app
 
     log: list[Mapping[str, Any]] = []
 

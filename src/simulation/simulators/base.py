@@ -15,6 +15,8 @@ from typing import Any, cast
 
 import concordia.prefabs.game_master as game_master_prefabs
 import numpy as np
+from concordia.environment import engine as engine_lib
+from concordia.environment.engines import sequential
 from concordia.language_model import language_model
 from concordia.typing import prefab as prefab_lib
 from concordia.utils import helper_functions
@@ -356,6 +358,27 @@ class BaseSimulator(ABC):
             default_max_steps=simulation_config.execution.get("max_steps", 100),
         )
 
+    def _create_engine(self) -> engine_lib.Engine:
+        """Create simulation engine based on scenario configuration.
+
+        Returns:
+            Engine instance (Sequential, Simultaneous, or SocialMedia).
+        """
+        scenario_config = self._config.scenario
+        engine_type = scenario_config.get("engine", "sequential")
+
+        if engine_type == "social_media":
+            from src.environments.social_media.engine import SocialMediaEngine
+
+            return SocialMediaEngine()
+        elif engine_type == "simultaneous":
+            from concordia.environment.engines import simultaneous
+
+            return simultaneous.Simultaneous()
+        else:
+            # Default to sequential
+            return sequential.Sequential()
+
     def setup(self) -> None:
         """Set up the simulation by creating all components.
 
@@ -370,6 +393,9 @@ class BaseSimulator(ABC):
         # Create ProbeRunner if evaluation config exists
         self._probe_runner = self._create_probe_runner()
 
+        # Create engine based on scenario config
+        engine = self._create_engine()
+
         concordia_config = self.build_config()
         entity_model_mapping = self.get_entity_model_mapping()
 
@@ -378,6 +404,7 @@ class BaseSimulator(ABC):
             models=models,
             entity_to_model=entity_model_mapping,
             embedder=self._embedder,
+            engine=engine,
             hydra_config=self._config,
             probe_runner=self._probe_runner,
         )

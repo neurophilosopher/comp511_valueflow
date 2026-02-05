@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import termcolor
+from concordia.environment import engine as engine_lib
 from concordia.typing import entity as entity_lib
 from concordia.utils import concurrency
 
@@ -133,7 +134,7 @@ def execute_action(
         return ActionResult(False, action_type, str(e))
 
 
-class SocialMediaEngine:
+class SocialMediaEngine(engine_lib.Engine):
     """Engine for parallel social media simulation.
 
     All agents act simultaneously each step:
@@ -141,15 +142,17 @@ class SocialMediaEngine:
     2. Each agent selects an action (parallel)
     3. All actions are executed on the app
     4. Checkpoint
+
+    The app instance is obtained from the game master at runtime.
     """
 
-    def __init__(self, app: SocialMediaApp) -> None:
-        """Initialize engine with social media app.
+    def __init__(self) -> None:
+        """Initialize engine.
 
-        Args:
-            app: The social media app instance to use.
+        The SocialMediaApp is obtained from the game master at the start
+        of run_loop, not at initialization time.
         """
-        self.app = app
+        self.app: SocialMediaApp | None = None
         self._action_prompt = (
             "Choose ONE action. Format: ACTION: <type> | TARGET: <id or username or none> | CONTENT: <text or none>\n"
             "Actions: post, reply, like, boost, follow, unfollow, skip\n"
@@ -160,6 +163,47 @@ class SocialMediaEngine:
             "  ACTION: boost | TARGET: 42 | CONTENT: none\n"
             "  ACTION: follow | TARGET: Alice | CONTENT: none\n"
             "  ACTION: skip | TARGET: none | CONTENT: none"
+        )
+
+    def make_observation(
+        self,
+        game_master: entity_lib.Entity,
+        entity: entity_lib.Entity,
+    ) -> str:
+        raise NotImplementedError(
+            "SocialMediaEngine uses run_loop directly; make_observation is not called."
+        )
+
+    def next_acting(
+        self,
+        game_master: entity_lib.Entity,
+        entities: Sequence[entity_lib.Entity],
+    ) -> tuple[entity_lib.Entity, entity_lib.ActionSpec]:
+        raise NotImplementedError(
+            "SocialMediaEngine uses run_loop directly; next_acting is not called."
+        )
+
+    def resolve(
+        self,
+        game_master: entity_lib.Entity,
+        event: str,
+    ) -> None:
+        raise NotImplementedError(
+            "SocialMediaEngine uses run_loop directly; resolve is not called."
+        )
+
+    def terminate(self, game_master: entity_lib.Entity) -> bool:
+        raise NotImplementedError(
+            "SocialMediaEngine uses run_loop directly; terminate is not called."
+        )
+
+    def next_game_master(
+        self,
+        game_master: entity_lib.Entity,
+        game_masters: Sequence[entity_lib.Entity],
+    ) -> entity_lib.Entity:
+        raise NotImplementedError(
+            "SocialMediaEngine uses run_loop directly; next_game_master is not called."
         )
 
     def run_loop(
@@ -186,8 +230,34 @@ class SocialMediaEngine:
         if not entities:
             raise ValueError("No entities provided.")
 
+        if not game_masters:
+            raise ValueError("No game masters provided.")
+
+        # Extract app from game master (find the one with app attribute)
+        gm = None
+        for candidate in game_masters:
+            if hasattr(candidate, "app"):
+                self.app = candidate.app
+                gm = candidate
+                break
+            elif hasattr(candidate, "_app"):
+                self.app = candidate._app
+                gm = candidate
+                break
+
+        if gm is None:
+            gm_names = [g.name for g in game_masters]
+            raise ValueError(f"No game master with 'app' attribute found. Game masters: {gm_names}")
+
+        # Validate app was set
+        if self.app is None:
+            raise RuntimeError("Failed to extract app from game master")
+
+        # Capture app in local variable for use in nested function
+        app = self.app
+
         steps = 0
-        gm_name = game_masters[0].name if game_masters else "social_media_gm"
+        gm_name = gm.name
 
         # Initial premise observation
         if premise:
@@ -195,7 +265,7 @@ class SocialMediaEngine:
                 entity.observe(premise)
 
         while steps < max_steps:
-            self.app.current_step = steps
+            app.current_step = steps
 
             if verbose:
                 print(termcolor.colored(f"\n=== Step {steps} ===", _PRINT_COLOR))
@@ -212,7 +282,7 @@ class SocialMediaEngine:
             ) -> dict[str, Any]:
                 """Process one entity: observe -> act -> resolve."""
                 # Generate observation (timeline)
-                observation = self.app.format_timeline(entity.name)
+                observation = app.format_timeline(entity.name)
 
                 if verbose:
                     print(termcolor.colored(f"\n{entity.name} observes:", _PRINT_COLOR))
@@ -232,7 +302,7 @@ class SocialMediaEngine:
 
                 # Parse and execute action
                 parsed = parse_action(raw_action)
-                result = execute_action(self.app, entity.name, parsed)
+                result = execute_action(app, entity.name, parsed)
 
                 if verbose:
                     status = "OK" if result.success else "FAILED"
@@ -272,4 +342,6 @@ class SocialMediaEngine:
 
     def get_app_state(self) -> dict[str, Any]:
         """Get serializable app state for checkpoints."""
+        if self.app is None:
+            raise RuntimeError("App not available - run_loop has not been called")
         return self.app.to_dict()

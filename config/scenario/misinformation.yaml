@@ -3,6 +3,9 @@
 name: misinformation
 description: "Simulates misinformation spread on a social media platform"
 
+# Use social media engine for parallel execution
+engine: social_media
+
 # Scenario premise
 premise: |
   You are using a social media platform. You can see posts from people you follow,
@@ -25,16 +28,6 @@ event:
     circulating and users are reacting in different ways - some sharing
     without verification, others questioning the sources, and some just
     observing.
-
-# Shared memories for all agents
-shared_memories:
-  - "You are using a social media platform."
-  - "You can see posts from people you follow in your feed."
-  - "You can interact by posting, replying, liking, boosting, or following others."
-
-# Initial observations
-initial_observations:
-  - "{name} opens the social media app and checks their feed."
 
 # Social media specific configuration
 social_media:
