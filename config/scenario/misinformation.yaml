@@ -1,0 +1,124 @@
+# Misinformation Spread Scenario Configuration
+
+name: misinformation
+description: "Simulates misinformation spread on a social media platform"
+
+# Scenario premise
+premise: |
+  You are using a social media platform. You can see posts from people you follow,
+  and you can post, reply, like, boost, follow, or unfollow others.
+  Engage naturally based on your personality and interests.
+
+# Setting context
+setting:
+  name: "Social Media Platform"
+  background:
+    - "This is a social media platform where users share posts and interact."
+    - "Users can post, reply, like, boost, and follow/unfollow others."
+    - "Each user sees a timeline of posts from people they follow."
+
+# Event context
+event:
+  name: "Active Discussion"
+  context: |
+    The platform is buzzing with activity. Some controversial claims are
+    circulating and users are reacting in different ways - some sharing
+    without verification, others questioning the sources, and some just
+    observing.
+
+# Shared memories for all agents
+shared_memories:
+  - "You are using a social media platform."
+  - "You can see posts from people you follow in your feed."
+  - "You can interact by posting, replying, liking, boosting, or following others."
+
+# Initial observations
+initial_observations:
+  - "{name} opens the social media app and checks their feed."
+
+# Social media specific configuration
+social_media:
+  timeline_limit: 20
+
+# Initial follower graph (who follows whom)
+# Format: user -> list of users they follow
+initial_graph:
+  Alice: [Bob, Charlie, Diana]
+  Bob: [Alice, Charlie]
+  Charlie: [Alice, Bob, Diana]
+  Diana: [Alice, Bob, Charlie, Eve]
+  Eve: [Alice, Diana]
+  Frank: [Bob, Charlie, Eve]
+
+# Seed posts (injected at step 0)
+seed_posts:
+  - author: Alice
+    content: "BREAKING: Scientists confirm that common household item causes serious health issues! Share before they delete this! #truth #coverup"
+    tags: [misinfo_seed, health]
+
+  - author: Bob
+    content: "Beautiful sunset today. Sometimes it's good to just appreciate the simple things."
+    tags: [neutral]
+
+  - author: Charlie
+    content: "Just read an interesting article about critical thinking. Always verify claims before sharing!"
+    tags: [counter_misinfo]
+
+# Agent configurations
+agents:
+  entities:
+    - name: Alice
+      prefab: social_media_user
+      params:
+        persona: "Sensationalist who loves sharing shocking news without fact-checking. Gets excited about conspiracy theories and 'hidden truths'. Has many followers."
+        goal: "Share interesting and shocking content to get engagement"
+
+    - name: Bob
+      prefab: social_media_user
+      params:
+        persona: "Laid-back user who mostly posts about daily life. Generally trusts what friends share but doesn't actively spread unverified claims."
+        goal: "Stay connected with friends and share positive content"
+
+    - name: Charlie
+      prefab: social_media_user
+      params:
+        persona: "Skeptical fact-checker who questions dubious claims. Often asks for sources and points out logical fallacies. Values accuracy."
+        goal: "Promote critical thinking and counter misinformation"
+
+    - name: Diana
+      prefab: social_media_user
+      params:
+        persona: "Active commenter who engages with controversial topics. Can be swayed by emotional appeals but also listens to reason."
+        goal: "Engage in discussions and form opinions based on what seems credible"
+
+    - name: Eve
+      prefab: social_media_user
+      params:
+        persona: "Casual user who mostly lurks and occasionally likes posts. Doesn't post much but pays attention to what's trending."
+        goal: "Stay informed about what's happening without getting too involved"
+
+    - name: Frank
+      prefab: social_media_user
+      params:
+        persona: "New user still figuring out the platform. Tends to trust popular accounts and posts with many likes/boosts."
+        goal: "Learn how the platform works and find interesting content"
+
+# Game Master configuration
+game_master:
+  prefab: misinformation_game_master
+  name: social_media_gm
+  params:
+    timeline_limit: ${scenario.social_media.timeline_limit}
+    initial_graph: ${scenario.initial_graph}
+    seed_posts: ${scenario.seed_posts}
+
+# Prefab mappings
+prefabs:
+  social_media_user:
+    _target_: scenarios.misinformation.agents.SocialMediaUserAgent
+  misinformation_game_master:
+    _target_: scenarios.misinformation.game_masters.MisinformationGameMaster
+
+# Note: This scenario uses the standard Concordia framework via run_experiment.py
+# The ConcordiaSocialMediaGameMaster provides parallel execution and
+# feed-based observations while integrating with the standard engine.

@@ -24,17 +24,21 @@ class MockLanguageModel(language_model.LanguageModel):
         self,
         default_response: str = "I observe my surroundings and consider my options.",
         response_map: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> None:
         """Initialize the mock model.
 
         Args:
             default_response: Default response when no match is found.
             response_map: Optional mapping of prompt substrings to responses.
+            **kwargs: Additional arguments (ignored, for config compatibility).
         """
         self._default_response = default_response
         self._response_map = response_map or {}
         self._call_count = 0
         self._call_history: list[dict[str, Any]] = []
+        # Store name if provided (for logging compatibility)
+        self._name = kwargs.get("name", "mock")
 
     @property
     def call_count(self) -> int:
