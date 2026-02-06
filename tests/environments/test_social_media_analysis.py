@@ -1,5 +1,8 @@
 """Tests for social media analysis tools."""
 
+import json
+from pathlib import Path
+
 from src.environments.social_media.analysis import (
     TransmissionChain,
     TransmissionEvent,
@@ -356,3 +359,42 @@ class TestAnalyzeSimulation:
         analysis = analyze_simulation(state, seed_tags=["seed"])
 
         assert analysis["summary"]["total_chains"] == 1
+
+    def test_analyze_from_file_wrapped(self, tmp_path: Path) -> None:
+        """Test analyzing from a JSON file with app_state wrapper."""
+        app = SocialMediaApp()
+        app.current_step = 0
+        app.post("Alice", "Seed post", tags=["seed"])
+        app.current_step = 1
+        app.post("Bob", "Normal post")
+
+        filepath = tmp_path / "wrapped.json"
+        filepath.write_text(json.dumps({"app_state": app.to_dict()}))
+
+        analysis = analyze_simulation(str(filepath), seed_tags=["seed"])
+        assert analysis["summary"]["total_chains"] == 1
+        assert len(analysis["posts"]) == 2
+
+    def test_analyze_from_file_checkpoint_format(self, tmp_path: Path) -> None:
+        """Test analyzing from a full checkpoint JSON (game_masters nested format)."""
+        app = SocialMediaApp()
+        app.current_step = 0
+        seed_id = app.post("Alice", "Breaking news!", tags=["misinfo_seed"])
+        app.current_step = 1
+        app.boost("Bob", seed_id)
+
+        checkpoint = {
+            "game_masters": {
+                "social_media_gm": {
+                    "state": {"name": "social_media_gm", "app_state": app.to_dict()}
+                }
+            },
+            "raw_log": [],
+        }
+        filepath = tmp_path / "checkpoint.json"
+        filepath.write_text(json.dumps(checkpoint))
+
+        analysis = analyze_simulation(str(filepath), seed_tags=["misinfo_seed"])
+        assert analysis["summary"]["total_chains"] == 1
+        assert analysis["summary"]["total_events"] == 1
+        assert len(analysis["posts"]) == 2

@@ -400,8 +400,16 @@ def analyze_simulation(
         path = Path(app_state)
         with path.open() as f:
             data = json.load(f)
-        # Handle both direct app state and wrapped formats
-        if "app_state" in data:
+        # Handle direct app state, wrapped, and full checkpoint formats
+        if "game_masters" in data:
+            for gm_data in data["game_masters"].values():
+                state = gm_data.get("state", {})
+                if "app_state" in state:
+                    app = SocialMediaApp.from_dict(state["app_state"])
+                    break
+            else:
+                raise ValueError("No app_state found in game_masters")
+        elif "app_state" in data:
             app = SocialMediaApp.from_dict(data["app_state"])
         else:
             app = SocialMediaApp.from_dict(data)
