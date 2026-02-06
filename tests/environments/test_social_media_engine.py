@@ -1,6 +1,10 @@
 """Tests for SocialMediaEngine and action parsing."""
 
+from typing import Any
+
+import pytest
 from concordia.environment import engine as engine_lib
+from concordia.typing import entity as entity_lib
 
 from src.environments.social_media.app import SocialMediaApp
 from src.environments.social_media.engine import (
@@ -228,6 +232,188 @@ class TestExecuteAction:
         result = execute_action(app, "Alice", parsed)
 
         assert result.success is False
+
+
+class TestExecuteActionEdgeCases:
+    """Edge-case tests for execute_action."""
+
+    def test_reply_non_integer_target(self) -> None:
+        """Test reply with non-integer target string returns failure."""
+        app = SocialMediaApp()
+        parsed = {"action_type": "reply", "target": "abc", "content": "My reply"}
+
+        result = execute_action(app, "Alice", parsed)
+
+        assert result.success is False
+        assert "Invalid post ID" in result.message
+
+    def test_reply_empty_content(self) -> None:
+        """Test reply with empty content ('none') fails."""
+        app = SocialMediaApp()
+        post_id = app.post("Bob", "Original")
+        parsed = {"action_type": "reply", "target": str(post_id), "content": "none"}
+
+        result = execute_action(app, "Alice", parsed)
+
+        assert result.success is False
+        assert "requires content" in result.message.lower()
+
+    def test_boost_nonexistent_post(self) -> None:
+        """Test boost of non-existent post fails gracefully."""
+        app = SocialMediaApp()
+        parsed = {"action_type": "boost", "target": "999", "content": "none"}
+
+        result = execute_action(app, "Alice", parsed)
+
+        assert result.success is False
+        assert "non-existent" in result.message.lower()
+
+    def test_like_nonexistent_post(self) -> None:
+        """Test like of non-existent post fails gracefully."""
+        app = SocialMediaApp()
+        parsed = {"action_type": "like", "target": "999", "content": "none"}
+
+        result = execute_action(app, "Alice", parsed)
+
+        assert result.success is False
+        assert "non-existent" in result.message.lower()
+
+    def test_like_non_integer_target(self) -> None:
+        """Test like with non-integer target returns failure."""
+        app = SocialMediaApp()
+        parsed = {"action_type": "like", "target": "abc", "content": "none"}
+
+        result = execute_action(app, "Alice", parsed)
+
+        assert result.success is False
+        assert "Invalid post ID" in result.message
+
+    def test_boost_non_integer_target(self) -> None:
+        """Test boost with non-integer target returns failure."""
+        app = SocialMediaApp()
+        parsed = {"action_type": "boost", "target": "abc", "content": "none"}
+
+        result = execute_action(app, "Alice", parsed)
+
+        assert result.success is False
+        assert "Invalid post ID" in result.message
+
+
+class TestRunLoop:
+    """Integration tests for SocialMediaEngine.run_loop()."""
+
+    def test_run_loop_basic(self) -> None:
+        """Test run_loop executes steps with mock entities."""
+        from unittest.mock import MagicMock
+
+        from src.environments.social_media.game_master import _MinimalGameMasterEntity
+
+        app = SocialMediaApp()
+        app._ensure_user("Alice")
+        app._ensure_user("Bob")
+
+        gm_entity = _MinimalGameMasterEntity(name="test_gm", app=app)
+
+        # Create mock entities that return structured actions
+        alice = MagicMock(spec=entity_lib.Entity)
+        alice.name = "Alice"
+        alice.act.return_value = "ACTION: post | TARGET: none | CONTENT: Hello from Alice!"
+
+        bob = MagicMock(spec=entity_lib.Entity)
+        bob.name = "Bob"
+        bob.act.return_value = "ACTION: post | TARGET: none | CONTENT: Hello from Bob!"
+
+        engine = SocialMediaEngine()
+        log: list[dict[str, Any]] = []
+
+        engine.run_loop(
+            game_masters=[gm_entity],
+            entities=[alice, bob],
+            max_steps=2,
+            log=log,
+        )
+
+        # Both agents posted each step => 4 posts total
+        assert len(app.get_all_posts()) == 4
+        assert len(log) == 2
+
+    def test_run_loop_with_premise(self) -> None:
+        """Test run_loop delivers premise to all entities."""
+        from unittest.mock import MagicMock
+
+        from src.environments.social_media.game_master import _MinimalGameMasterEntity
+
+        app = SocialMediaApp()
+        gm_entity = _MinimalGameMasterEntity(name="test_gm", app=app)
+
+        agent = MagicMock(spec=entity_lib.Entity)
+        agent.name = "Alice"
+        agent.act.return_value = "ACTION: skip | TARGET: none | CONTENT: none"
+
+        engine = SocialMediaEngine()
+
+        engine.run_loop(
+            game_masters=[gm_entity],
+            entities=[agent],
+            premise="Welcome to the simulation!",
+            max_steps=1,
+        )
+
+        # Premise should be the first observe call
+        first_observe_call = agent.observe.call_args_list[0]
+        assert "Welcome to the simulation!" in first_observe_call[0][0]
+
+    def test_run_loop_no_entities_raises(self) -> None:
+        """Test run_loop raises ValueError with no entities."""
+        from unittest.mock import MagicMock
+
+        gm = MagicMock(spec=entity_lib.Entity)
+        gm.name = "gm"
+
+        engine = SocialMediaEngine()
+
+        with pytest.raises(ValueError, match="No entities"):
+            engine.run_loop(game_masters=[gm], entities=[], max_steps=1)
+
+    def test_run_loop_no_game_masters_raises(self) -> None:
+        """Test run_loop raises ValueError with no game masters."""
+        from unittest.mock import MagicMock
+
+        agent = MagicMock(spec=entity_lib.Entity)
+        agent.name = "Alice"
+
+        engine = SocialMediaEngine()
+
+        with pytest.raises(ValueError, match="No game masters"):
+            engine.run_loop(game_masters=[], entities=[agent], max_steps=1)
+
+    def test_run_loop_checkpoint_callback(self) -> None:
+        """Test run_loop calls checkpoint callback after each step."""
+        from unittest.mock import MagicMock
+
+        from src.environments.social_media.game_master import _MinimalGameMasterEntity
+
+        app = SocialMediaApp()
+        gm_entity = _MinimalGameMasterEntity(name="test_gm", app=app)
+
+        agent = MagicMock(spec=entity_lib.Entity)
+        agent.name = "Alice"
+        agent.act.return_value = "ACTION: skip | TARGET: none | CONTENT: none"
+
+        callback = MagicMock()
+        engine = SocialMediaEngine()
+
+        engine.run_loop(
+            game_masters=[gm_entity],
+            entities=[agent],
+            max_steps=3,
+            checkpoint_callback=callback,
+        )
+
+        assert callback.call_count == 3
+        callback.assert_any_call(1)
+        callback.assert_any_call(2)
+        callback.assert_any_call(3)
 
 
 class TestActionResult:

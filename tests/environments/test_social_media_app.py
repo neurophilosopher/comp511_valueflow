@@ -261,6 +261,49 @@ class TestSocialMediaApp:
         assert post is not None
         assert post.tags == ["test"]
 
+    def test_get_replies(self) -> None:
+        """Test getting replies to a post, sorted chronologically."""
+        app = SocialMediaApp()
+        app.current_step = 0
+        original_id = app.post("Alice", "Original post")
+
+        app.current_step = 1
+        app.post("Bob", "Reply 1", reply_to=original_id)
+        app.current_step = 2
+        app.post("Charlie", "Reply 2", reply_to=original_id)
+        # Unrelated post
+        app.post("Diana", "Not a reply")
+
+        replies = app.get_replies(original_id)
+        assert len(replies) == 2
+        assert replies[0].author == "Bob"
+        assert replies[1].author == "Charlie"
+
+    def test_get_replies_empty(self) -> None:
+        """Test get_replies returns empty list when no replies exist."""
+        app = SocialMediaApp()
+        post_id = app.post("Alice", "No replies here")
+
+        assert app.get_replies(post_id) == []
+
+    def test_boost_nonexistent_post_raises(self) -> None:
+        """Test that boosting a non-existent post raises ValueError."""
+        app = SocialMediaApp()
+        with pytest.raises(ValueError, match="non-existent"):
+            app.boost("Alice", 999)
+
+    def test_like_nonexistent_post_raises(self) -> None:
+        """Test that liking a non-existent post raises ValueError."""
+        app = SocialMediaApp()
+        with pytest.raises(ValueError, match="non-existent"):
+            app.like("Alice", 999)
+
+    def test_unlike_nonexistent_post_raises(self) -> None:
+        """Test that unliking a non-existent post raises ValueError."""
+        app = SocialMediaApp()
+        with pytest.raises(ValueError, match="non-existent"):
+            app.unlike("Alice", 999)
+
     def test_get_all_posts(self) -> None:
         """Test getting all posts sorted."""
         app = SocialMediaApp()

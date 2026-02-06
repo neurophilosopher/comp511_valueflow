@@ -90,6 +90,51 @@ class TestSocialMediaGameMaster:
         assert gm.app.get_following("Alice") == set()
         assert gm.app.get_following("Bob") == set()
 
+    def test_build_combined_graph_seeds_entities(self) -> None:
+        """Test build with initial_graph, seed_posts, and entities combined."""
+
+        class MockEntity:
+            def __init__(self, name: str) -> None:
+                self.name = name
+
+        entities = [MockEntity("Alice"), MockEntity("Bob"), MockEntity("Charlie")]
+        gm = SocialMediaGameMaster(
+            params={
+                "name": "test_gm",
+                "initial_graph": {
+                    "Alice": ["Bob"],
+                    "Bob": ["Alice", "Charlie"],
+                },
+                "seed_posts": [
+                    {"author": "Alice", "content": "Breaking news!", "tags": ["misinfo_seed"]},
+                    {"author": "Bob", "content": "Hello world"},
+                ],
+            },
+            entities=entities,  # type: ignore[arg-type]
+        )
+
+        entity = gm.build(model=None, memory_bank=None)  # type: ignore[arg-type]
+
+        # All 3 entities initialized as users
+        for name in ("Alice", "Bob", "Charlie"):
+            assert gm.app.get_following(name) is not None
+
+        # Follow graph set up
+        assert "Bob" in gm.app.get_following("Alice")
+        assert "Alice" in gm.app.get_following("Bob")
+        assert "Charlie" in gm.app.get_following("Bob")
+        assert gm.app.get_following("Charlie") == set()
+
+        # Seed posts created
+        posts = gm.app.get_all_posts()
+        assert len(posts) == 2
+        assert posts[0].author == "Alice"
+        assert "misinfo_seed" in posts[0].tags
+        assert posts[1].author == "Bob"
+
+        # Entity returned correctly
+        assert entity.name == "test_gm"
+
 
 class TestMinimalGameMasterEntity:
     """Tests for _MinimalGameMasterEntity."""
