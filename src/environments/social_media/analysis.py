@@ -50,27 +50,44 @@ class TransmissionChain:
         return len(users)
 
     @property
+    def size(self) -> int:
+        """Total number of posts in the chain (seed + all transmission events)."""
+        return 1 + len(self.events)
+
+    @property
     def depth(self) -> int:
         """Maximum depth of the transmission chain."""
         if not self.events:
             return 0
-        # Build adjacency for BFS
+        return self._bfs_stats()[0]
+
+    @property
+    def breadth(self) -> int:
+        """Number of leaf nodes (posts with no further transmissions)."""
+        if not self.events:
+            return 1  # Seed post alone is a leaf
+        return self._bfs_stats()[1]
+
+    def _bfs_stats(self) -> tuple[int, int]:
+        """Compute depth and breadth via BFS. Returns (max_depth, leaf_count)."""
         children: dict[int, list[int]] = defaultdict(list)
         for event in self.events:
             children[event.from_post_id].append(event.to_post_id)
 
-        # BFS from seed
         max_depth = 0
+        leaf_count = 0
         queue = [(self.seed_post_id, 0)]
         visited = {self.seed_post_id}
         while queue:
-            post_id, depth = queue.pop(0)
-            max_depth = max(max_depth, depth)
-            for child_id in children[post_id]:
-                if child_id not in visited:
-                    visited.add(child_id)
-                    queue.append((child_id, depth + 1))
-        return max_depth
+            post_id, d = queue.pop(0)
+            max_depth = max(max_depth, d)
+            reachable_children = [c for c in children[post_id] if c not in visited]
+            if not reachable_children:
+                leaf_count += 1
+            for child_id in reachable_children:
+                visited.add(child_id)
+                queue.append((child_id, d + 1))
+        return max_depth, leaf_count
 
 
 def extract_keywords(content: str) -> set[str]:
@@ -311,6 +328,8 @@ def chains_to_summary(chains: list[TransmissionChain]) -> dict[str, Any]:
             "total_events": 0,
             "total_reach": 0,
             "max_depth": 0,
+            "max_breadth": 0,
+            "max_size": 0,
             "chains": [],
         }
 
@@ -335,6 +354,8 @@ def chains_to_summary(chains: list[TransmissionChain]) -> dict[str, Any]:
                 "total_events": len(chain.events),
                 "reach": chain.reach,
                 "depth": chain.depth,
+                "breadth": chain.breadth,
+                "size": chain.size,
                 "events_by_type": dict(by_type),
             }
         )
@@ -344,7 +365,12 @@ def chains_to_summary(chains: list[TransmissionChain]) -> dict[str, Any]:
         "total_events": total_events,
         "total_reach": len(all_users),
         "max_depth": max(c.depth for c in chains),
+        "max_breadth": max(c.breadth for c in chains),
+        "max_size": max(c.size for c in chains),
         "avg_reach": sum(c.reach for c in chains) / len(chains),
+        "avg_depth": sum(c.depth for c in chains) / len(chains),
+        "avg_breadth": sum(c.breadth for c in chains) / len(chains),
+        "avg_size": sum(c.size for c in chains) / len(chains),
         "chains": chain_summaries,
     }
 
@@ -410,9 +436,15 @@ def print_analysis_report(analysis: dict[str, Any]) -> None:
     print(f"Total transmission events: {summary['total_events']}")
     print(f"Total users reached: {summary['total_reach']}")
     print(f"Maximum chain depth: {summary['max_depth']}")
+    print(f"Maximum chain breadth: {summary.get('max_breadth', 'N/A')}")
+    print(f"Maximum chain size: {summary.get('max_size', 'N/A')}")
 
     if summary["total_chains"] > 0:
-        print(f"Average reach per seed: {summary['avg_reach']:.1f}")
+        print(f"\nAverages across chains:")
+        print(f"  Reach:   {summary['avg_reach']:.1f} users")
+        print(f"  Depth:   {summary.get('avg_depth', 0):.1f} hops")
+        print(f"  Breadth: {summary.get('avg_breadth', 0):.1f} leaves")
+        print(f"  Size:    {summary.get('avg_size', 0):.1f} posts")
 
     print("\n" + "-" * 60)
     print("CHAIN DETAILS")
@@ -421,9 +453,10 @@ def print_analysis_report(analysis: dict[str, Any]) -> None:
     for chain in summary["chains"]:
         print(f"\nSeed Post #{chain['seed_post_id']} by @{chain['seed_author']}")
         print(f"  Tags: {chain['seed_tags']}")
-        print(f"  Total events: {chain['total_events']}")
-        print(f"  Reach: {chain['reach']} users")
-        print(f"  Depth: {chain['depth']} hops")
+        print(f"  Size:    {chain.get('size', 'N/A')} posts (seed + {chain['total_events']} events)")
+        print(f"  Depth:   {chain['depth']} hops")
+        print(f"  Breadth: {chain.get('breadth', 'N/A')} leaves")
+        print(f"  Reach:   {chain['reach']} users")
         print(f"  Events by type: {chain['events_by_type']}")
 
     print("\n" + "-" * 60)

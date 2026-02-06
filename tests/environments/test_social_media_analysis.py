@@ -197,6 +197,55 @@ class TestFindTransmissionChains:
         assert len(chains) == 1
         assert chains[0].depth == 2  # Two hops: seed -> reply -> reply
 
+    def test_chain_breadth_calculation(self) -> None:
+        """Test breadth (leaf count) calculation."""
+        app = SocialMediaApp()
+        app.current_step = 0
+        seed_id = app.post("Alice", "Original", tags=["seed"])
+
+        # Three direct replies = 3 leaves
+        app.current_step = 1
+        app.post("Bob", "Reply 1", reply_to=seed_id)
+        app.post("Charlie", "Reply 2", reply_to=seed_id)
+        app.post("Diana", "Reply 3", reply_to=seed_id)
+
+        chains = find_transmission_chains(app, seed_tags=["seed"])
+
+        assert len(chains) == 1
+        assert chains[0].breadth == 3  # Three leaf nodes
+        assert chains[0].depth == 1  # All direct replies
+
+    def test_chain_size_calculation(self) -> None:
+        """Test size (total post count) calculation."""
+        app = SocialMediaApp()
+        app.current_step = 0
+        seed_id = app.post("Alice", "Original", tags=["seed"])
+
+        app.current_step = 1
+        reply_id = app.post("Bob", "Reply", reply_to=seed_id)
+        app.boost("Charlie", seed_id)
+
+        app.current_step = 2
+        app.post("Diana", "Reply to reply", reply_to=reply_id)
+
+        chains = find_transmission_chains(app, seed_tags=["seed"])
+
+        assert len(chains) == 1
+        assert chains[0].size == 4  # seed + boost + reply + reply-to-reply
+
+    def test_empty_chain_breadth_and_size(self) -> None:
+        """Test breadth and size for a chain with no events."""
+        chain = TransmissionChain(
+            seed_post_id=1,
+            seed_author="Alice",
+            seed_content="Lonely post",
+            seed_tags=["seed"],
+        )
+
+        assert chain.size == 1
+        assert chain.breadth == 1  # Seed itself is the only leaf
+        assert chain.depth == 0
+
 
 class TestChainsToEdgeList:
     """Tests for edge list conversion."""
@@ -263,6 +312,10 @@ class TestChainsToSummary:
         assert summary["total_chains"] == 1
         assert summary["total_events"] == 2
         assert summary["total_reach"] == 3  # Alice, Bob, Charlie
+        assert summary["max_breadth"] == 2  # Bob and Charlie are leaves
+        assert summary["max_size"] == 3  # seed + 2 events
+        assert summary["chains"][0]["breadth"] == 2
+        assert summary["chains"][0]["size"] == 3
 
     def test_empty_chains(self) -> None:
         """Test summary with no chains."""
@@ -270,6 +323,8 @@ class TestChainsToSummary:
 
         assert summary["total_chains"] == 0
         assert summary["total_events"] == 0
+        assert summary["max_breadth"] == 0
+        assert summary["max_size"] == 0
 
 
 class TestAnalyzeSimulation:
