@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 from concordia.typing import prefab as prefab_lib
 
@@ -267,3 +270,260 @@ class TestSimulationSetup:
         entity = simulation.entities[0]
         action = entity.act()
         assert isinstance(action, str)
+
+    @pytest.mark.integration
+    def test_add_entity_wrong_role_raises(self, mock_model, embedder):
+        """Test that add_entity rejects non-ENTITY role."""
+        prefabs = {
+            "basic_entity": BasicEntity(),
+            "basic_gm": BasicGameMaster(),
+        }
+
+        config = prefab_lib.Config(
+            prefabs=prefabs,
+            instances=[
+                prefab_lib.InstanceConfig(
+                    prefab="basic_gm",
+                    role=prefab_lib.Role.GAME_MASTER,
+                    params={"name": "narrator"},
+                ),
+            ],
+            default_premise="Test",
+            default_max_steps=2,
+        )
+
+        simulation = Simulation(
+            config=config,
+            models={"mock": mock_model},
+            entity_to_model={"_default_": "mock"},
+            embedder=embedder,
+        )
+
+        gm_instance = prefab_lib.InstanceConfig(
+            prefab="basic_entity",
+            role=prefab_lib.Role.GAME_MASTER,
+            params={"name": "ShouldFail"},
+        )
+
+        with pytest.raises(ValueError, match="ENTITY"):
+            simulation.add_entity(gm_instance)
+
+    @pytest.mark.integration
+    def test_add_game_master_wrong_role_raises(self, mock_model, embedder):
+        """Test that add_game_master rejects ENTITY role."""
+        prefabs = {
+            "basic_entity": BasicEntity(),
+            "basic_gm": BasicGameMaster(),
+        }
+
+        config = prefab_lib.Config(
+            prefabs=prefabs,
+            instances=[
+                prefab_lib.InstanceConfig(
+                    prefab="basic_entity",
+                    role=prefab_lib.Role.ENTITY,
+                    params={"name": "Alice"},
+                ),
+                prefab_lib.InstanceConfig(
+                    prefab="basic_gm",
+                    role=prefab_lib.Role.GAME_MASTER,
+                    params={"name": "narrator"},
+                ),
+            ],
+            default_premise="Test",
+            default_max_steps=2,
+        )
+
+        simulation = Simulation(
+            config=config,
+            models={"mock": mock_model},
+            entity_to_model={"_default_": "mock"},
+            embedder=embedder,
+        )
+
+        entity_instance = prefab_lib.InstanceConfig(
+            prefab="basic_gm",
+            role=prefab_lib.Role.ENTITY,
+            params={"name": "ShouldFail"},
+        )
+
+        with pytest.raises(ValueError, match="GAME_MASTER"):
+            simulation.add_game_master(entity_instance)
+
+    @pytest.mark.integration
+    def test_duplicate_entity_skipped(self, mock_model, embedder):
+        """Test that adding duplicate entity is skipped."""
+        prefabs = {
+            "basic_entity": BasicEntity(),
+            "basic_gm": BasicGameMaster(),
+        }
+
+        instances = [
+            prefab_lib.InstanceConfig(
+                prefab="basic_entity",
+                role=prefab_lib.Role.ENTITY,
+                params={"name": "Alice"},
+            ),
+            prefab_lib.InstanceConfig(
+                prefab="basic_gm",
+                role=prefab_lib.Role.GAME_MASTER,
+                params={"name": "narrator"},
+            ),
+        ]
+
+        config = prefab_lib.Config(
+            prefabs=prefabs,
+            instances=instances,
+            default_premise="Test",
+            default_max_steps=2,
+        )
+
+        simulation = Simulation(
+            config=config,
+            models={"mock": mock_model},
+            entity_to_model={"_default_": "mock"},
+            embedder=embedder,
+        )
+
+        assert len(simulation.entities) == 1
+
+        # Try adding duplicate
+        dup_instance = prefab_lib.InstanceConfig(
+            prefab="basic_entity",
+            role=prefab_lib.Role.ENTITY,
+            params={"name": "Alice"},
+        )
+        simulation.add_entity(dup_instance)
+
+        # Still 1 entity
+        assert len(simulation.entities) == 1
+
+    @pytest.mark.integration
+    def test_get_model_fallback_to_default(self, embedder):
+        """Test _get_model_for_entity falls back through: specific -> default -> first."""
+        model1 = MockLanguageModel(default_response="m1")
+        model2 = MockLanguageModel(default_response="m2")
+
+        prefabs = {
+            "basic_entity": BasicEntity(),
+            "basic_gm": BasicGameMaster(),
+        }
+
+        instances = [
+            prefab_lib.InstanceConfig(
+                prefab="basic_entity",
+                role=prefab_lib.Role.ENTITY,
+                params={"name": "Alice"},
+            ),
+            prefab_lib.InstanceConfig(
+                prefab="basic_gm",
+                role=prefab_lib.Role.GAME_MASTER,
+                params={"name": "narrator"},
+            ),
+        ]
+
+        config = prefab_lib.Config(
+            prefabs=prefabs,
+            instances=instances,
+            default_premise="Test",
+            default_max_steps=2,
+        )
+
+        simulation = Simulation(
+            config=config,
+            models={"model1": model1, "model2": model2},
+            entity_to_model={"Alice": "model1", "_default_": "model2"},
+            embedder=embedder,
+        )
+
+        # Specific mapping
+        assert simulation._get_model_for_entity("Alice") is model1
+        # Falls back to _default_
+        assert simulation._get_model_for_entity("Unknown") is model2
+
+    @pytest.mark.integration
+    def test_save_checkpoint_to_disk(self, mock_model, embedder, tmp_path: Path):
+        """Test save_checkpoint writes JSON file."""
+        prefabs = {
+            "basic_entity": BasicEntity(),
+            "basic_gm": BasicGameMaster(),
+        }
+
+        instances = [
+            prefab_lib.InstanceConfig(
+                prefab="basic_entity",
+                role=prefab_lib.Role.ENTITY,
+                params={"name": "Alice"},
+            ),
+            prefab_lib.InstanceConfig(
+                prefab="basic_gm",
+                role=prefab_lib.Role.GAME_MASTER,
+                params={"name": "narrator"},
+            ),
+        ]
+
+        config = prefab_lib.Config(
+            prefabs=prefabs,
+            instances=instances,
+            default_premise="Test",
+            default_max_steps=2,
+        )
+
+        simulation = Simulation(
+            config=config,
+            models={"mock": mock_model},
+            entity_to_model={"_default_": "mock"},
+            embedder=embedder,
+        )
+
+        checkpoint_dir = str(tmp_path / "checkpoints")
+        simulation.save_checkpoint(step=1, checkpoint_path=checkpoint_dir)
+
+        checkpoint_file = tmp_path / "checkpoints" / "step_1_checkpoint.json"
+        assert checkpoint_file.exists()
+
+        data = json.loads(checkpoint_file.read_text())
+        assert "entities" in data
+        assert "game_masters" in data
+        assert "raw_log" in data
+
+    @pytest.mark.integration
+    def test_get_raw_log_and_accessors(self, mock_model, embedder):
+        """Test get_raw_log, get_entities, get_game_masters."""
+        prefabs = {
+            "basic_entity": BasicEntity(),
+            "basic_gm": BasicGameMaster(),
+        }
+
+        instances = [
+            prefab_lib.InstanceConfig(
+                prefab="basic_entity",
+                role=prefab_lib.Role.ENTITY,
+                params={"name": "Alice"},
+            ),
+            prefab_lib.InstanceConfig(
+                prefab="basic_gm",
+                role=prefab_lib.Role.GAME_MASTER,
+                params={"name": "narrator"},
+            ),
+        ]
+
+        config = prefab_lib.Config(
+            prefabs=prefabs,
+            instances=instances,
+            default_premise="Test",
+            default_max_steps=2,
+        )
+
+        simulation = Simulation(
+            config=config,
+            models={"mock": mock_model},
+            entity_to_model={"_default_": "mock"},
+            embedder=embedder,
+        )
+
+        assert simulation.get_raw_log() == []
+        assert len(simulation.get_entities()) == 1
+        assert len(simulation.get_game_masters()) == 1
+        assert simulation.get_entity_prefab_config("Alice") is not None
+        assert simulation.get_entity_prefab_config("NonExistent") is None

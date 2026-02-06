@@ -151,3 +151,76 @@ class TestBaseSimulator:
         # Check goals are captured for generic agents
         assert context.get("Agent1") == "Complete the test objective"
         assert context.get("Agent2") == "Assist with the test"
+
+    def test_create_engine_default_sequential(self, test_config: DictConfig):
+        """Test _create_engine returns Sequential by default."""
+        from concordia.environment.engines import sequential
+
+        simulator = ConcreteSimulator(test_config)
+        engine = simulator._create_engine()
+        assert isinstance(engine, sequential.Sequential)
+
+    def test_create_engine_social_media(self, test_config: DictConfig):
+        """Test _create_engine returns SocialMediaEngine for social_media type."""
+        from src.environments.social_media.engine import SocialMediaEngine
+
+        test_config.scenario.engine = "social_media"
+        simulator = ConcreteSimulator(test_config)
+        engine = simulator._create_engine()
+        assert isinstance(engine, SocialMediaEngine)
+
+    def test_create_engine_simultaneous(self, test_config: DictConfig):
+        """Test _create_engine returns Simultaneous for simultaneous type."""
+        from concordia.environment.engines import simultaneous
+
+        test_config.scenario.engine = "simultaneous"
+        simulator = ConcreteSimulator(test_config)
+        engine = simulator._create_engine()
+        assert isinstance(engine, simultaneous.Simultaneous)
+
+    def test_get_agent_role_mapping(self, test_config: DictConfig):
+        """Test get_agent_role_mapping extracts roles from config."""
+        simulator = ConcreteSimulator(test_config)
+        mapping = simulator.get_agent_role_mapping()
+
+        assert mapping["Agent1"] == "participant"
+        assert mapping["Agent2"] == "participant"
+
+    def test_get_agent_role_mapping_empty_roles(self, test_config: DictConfig):
+        """Test get_agent_role_mapping handles entities without roles."""
+        # Remove role from entities
+        for entity in test_config.scenario.agents.entities:
+            if "role" in entity:
+                del entity["role"]
+
+        simulator = ConcreteSimulator(test_config)
+        mapping = simulator.get_agent_role_mapping()
+
+        assert mapping == {}
+
+    def test_build_prefabs_invalid_config_raises(self, test_config: DictConfig):
+        """Test build_prefabs raises on invalid prefab config type."""
+        test_config.scenario.prefabs.basic_entity = 42  # Neither _target_ nor string
+        simulator = ConcreteSimulator(test_config)
+
+        with pytest.raises(ValueError, match="Invalid prefab config"):
+            simulator.build_prefabs()
+
+    def test_load_class_error(self, test_config: DictConfig):
+        """Test _load_class raises on invalid path."""
+        simulator = ConcreteSimulator(test_config)
+
+        with pytest.raises(ModuleNotFoundError):
+            simulator._load_class("nonexistent.module.ClassName")
+
+    def test_build_agent_knowledge_bad_builder_returns_empty(self, test_config: DictConfig):
+        """Test build_agent_knowledge returns [] if builder import fails."""
+        test_config.scenario.builders = {
+            "knowledge": {
+                "module": "nonexistent.module",
+                "function": "build",
+            },
+        }
+        simulator = ConcreteSimulator(test_config)
+        knowledge = simulator.build_agent_knowledge("Alice", "buyer", {})
+        assert knowledge == []
