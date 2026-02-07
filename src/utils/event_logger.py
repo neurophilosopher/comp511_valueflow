@@ -32,7 +32,7 @@ EVENT_PATTERNS = {
     "termination": re.compile(r"^Terminate\? (.+)$", re.MULTILINE),
     "game_master": re.compile(r"^Game master: (.+)$", re.MULTILINE),
     "observation": re.compile(
-        r"^Entity (.+?) observed: (.*?)(?=^Entity |^The suggested|^The resolved|^Terminate|^Game master:|^Skipping|^Step \d|^Calling checkpoint|\Z)",
+        r"^Entity ([^\n]+?) observed: (.*?)(?=^Entity |^The suggested|^The resolved|^Terminate|^Game master:|^Skipping|^Step \d|^Calling checkpoint|\Z)",
         re.MULTILINE | re.DOTALL,
     ),
     "action": re.compile(r"^Entity (.+?) chose action: (.+?)$", re.MULTILINE),

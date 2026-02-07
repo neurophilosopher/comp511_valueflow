@@ -448,7 +448,7 @@ def print_analysis_report(analysis: dict[str, Any]) -> None:
     print(f"Maximum chain size: {summary.get('max_size', 'N/A')}")
 
     if summary["total_chains"] > 0:
-        print(f"\nAverages across chains:")
+        print("\nAverages across chains:")
         print(f"  Reach:   {summary['avg_reach']:.1f} users")
         print(f"  Depth:   {summary.get('avg_depth', 0):.1f} hops")
         print(f"  Breadth: {summary.get('avg_breadth', 0):.1f} leaves")
@@ -461,7 +461,9 @@ def print_analysis_report(analysis: dict[str, Any]) -> None:
     for chain in summary["chains"]:
         print(f"\nSeed Post #{chain['seed_post_id']} by @{chain['seed_author']}")
         print(f"  Tags: {chain['seed_tags']}")
-        print(f"  Size:    {chain.get('size', 'N/A')} posts (seed + {chain['total_events']} events)")
+        print(
+            f"  Size:    {chain.get('size', 'N/A')} posts (seed + {chain['total_events']} events)"
+        )
         print(f"  Depth:   {chain['depth']} hops")
         print(f"  Breadth: {chain.get('breadth', 'N/A')} leaves")
         print(f"  Reach:   {chain['reach']} users")

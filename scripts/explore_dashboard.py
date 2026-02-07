@@ -113,26 +113,30 @@ def precompute(
     for p in posts:
         if p.reply_to and p.reply_to in posts_by_id:
             parent = posts_by_id[p.reply_to]
-            edges.append({
-                "type": "reply",
-                "source_agent": p.author,
-                "target_agent": parent.author,
-                "source_post": p.id,
-                "target_post": p.reply_to,
-                "step": p.step,
-                "label": f"reply #{p.id}->#{p.reply_to}",
-            })
+            edges.append(
+                {
+                    "type": "reply",
+                    "source_agent": p.author,
+                    "target_agent": parent.author,
+                    "source_post": p.id,
+                    "target_post": p.reply_to,
+                    "step": p.step,
+                    "label": f"reply #{p.id}->#{p.reply_to}",
+                }
+            )
         if p.boost_of and p.boost_of in posts_by_id:
             original = posts_by_id[p.boost_of]
-            edges.append({
-                "type": "boost",
-                "source_agent": p.author,
-                "target_agent": original.author,
-                "source_post": p.id,
-                "target_post": p.boost_of,
-                "step": p.step,
-                "label": f"boost #{p.boost_of}",
-            })
+            edges.append(
+                {
+                    "type": "boost",
+                    "source_agent": p.author,
+                    "target_agent": original.author,
+                    "source_post": p.id,
+                    "target_post": p.boost_of,
+                    "step": p.step,
+                    "label": f"boost #{p.boost_of}",
+                }
+            )
 
     # Like edges from raw_log
     for log_entry in raw_log:
@@ -152,15 +156,17 @@ def precompute(
                     continue
                 if target_id in posts_by_id:
                     target_post = posts_by_id[target_id]
-                    edges.append({
-                        "type": "like",
-                        "source_agent": entity_name,
-                        "target_agent": target_post.author,
-                        "source_post": None,
-                        "target_post": target_id,
-                        "step": step,
-                        "label": f"like #{target_id}",
-                    })
+                    edges.append(
+                        {
+                            "type": "like",
+                            "source_agent": entity_name,
+                            "target_agent": target_post.author,
+                            "source_post": None,
+                            "target_post": target_id,
+                            "step": step,
+                            "label": f"like #{target_id}",
+                        }
+                    )
 
     # Follow edges from raw_log
     for log_entry in raw_log:
@@ -176,15 +182,17 @@ def precompute(
                 parsed = val.get("parsed", {})
                 target_user = parsed.get("target", "")
                 if target_user and target_user != "none":
-                    edges.append({
-                        "type": "follow",
-                        "source_agent": entity_name,
-                        "target_agent": target_user,
-                        "source_post": None,
-                        "target_post": None,
-                        "step": step,
-                        "label": f"follow @{target_user}",
-                    })
+                    edges.append(
+                        {
+                            "type": "follow",
+                            "source_agent": entity_name,
+                            "target_agent": target_user,
+                            "source_post": None,
+                            "target_post": None,
+                            "step": step,
+                            "label": f"follow @{target_user}",
+                        }
+                    )
 
     # Step actions index from raw_log
     step_actions: dict[int, list[dict[str, Any]]] = defaultdict(list)
@@ -208,16 +216,22 @@ def precompute(
             elif p.boost_of:
                 action_type = "boost"
                 target = p.boost_of
-            step_actions[p.step].append({
-                "entity": p.author,
-                "parsed": {"action_type": action_type, "target": str(target), "content": p.content},
-                "result": {
-                    "success": True,
-                    "action_type": action_type,
-                    "message": f"#{p.id}",
-                    "post_id": p.id,
-                },
-            })
+            step_actions[p.step].append(
+                {
+                    "entity": p.author,
+                    "parsed": {
+                        "action_type": action_type,
+                        "target": str(target),
+                        "content": p.content,
+                    },
+                    "result": {
+                        "success": True,
+                        "action_type": action_type,
+                        "message": f"#{p.id}",
+                        "post_id": p.id,
+                    },
+                }
+            )
 
     # Chain post ID sets
     chain_post_ids: dict[int, set[int]] = {}
@@ -415,7 +429,12 @@ def build_layout(sim: SimData) -> html.Div:
                         style={"margin": "0", "flexShrink": "0"},
                     ),
                     html.Div(
-                        style={"flex": "1", "display": "flex", "alignItems": "center", "gap": "10px"},
+                        style={
+                            "flex": "1",
+                            "display": "flex",
+                            "alignItems": "center",
+                            "gap": "10px",
+                        },
                         children=[
                             html.Label("Step:", style={"flexShrink": "0"}),
                             dcc.Slider(
@@ -561,7 +580,10 @@ def build_layout(sim: SimData) -> html.Div:
                                         clearable=False,
                                         style={"marginTop": "4px"},
                                     ),
-                                    html.Div(id="chain-stats", style={"marginTop": "4px", "fontSize": "13px"}),
+                                    html.Div(
+                                        id="chain-stats",
+                                        style={"marginTop": "4px", "fontSize": "13px"},
+                                    ),
                                 ],
                             ),
                         ],
@@ -667,10 +689,12 @@ def build_cytoscape_elements(
                 classes.append("chain-highlight")
             else:
                 classes.append("dimmed")
-        elements.append({
-            "data": {"id": agent, "label": f"{agent} ({count})", "size": size},
-            "classes": " ".join(classes),
-        })
+        elements.append(
+            {
+                "data": {"id": agent, "label": f"{agent} ({count})", "size": size},
+                "classes": " ".join(classes),
+            }
+        )
 
     # Edges
     edge_id = 0
@@ -694,19 +718,21 @@ def build_cytoscape_elements(
             else:
                 classes.append("dimmed")
 
-        elements.append({
-            "data": {
-                "id": f"e{edge_id}",
-                "source": edge["source_agent"],
-                "target": edge["target_agent"],
-                "label": edge["label"],
-                "edge_type": edge["type"],
-                "source_post": edge.get("source_post"),
-                "target_post": edge.get("target_post"),
-                "step": edge["step"],
-            },
-            "classes": " ".join(classes),
-        })
+        elements.append(
+            {
+                "data": {
+                    "id": f"e{edge_id}",
+                    "source": edge["source_agent"],
+                    "target": edge["target_agent"],
+                    "label": edge["label"],
+                    "edge_type": edge["type"],
+                    "source_post": edge.get("source_post"),
+                    "target_post": edge.get("target_post"),
+                    "step": edge["step"],
+                },
+                "classes": " ".join(classes),
+            }
+        )
         edge_id += 1
 
     return elements
@@ -822,11 +848,7 @@ def create_app(sim: SimData) -> Dash:
             counts = []
             for s in steps_range:
                 actions = SIM.step_actions.get(s, [])
-                c = sum(
-                    1
-                    for a in actions
-                    if a.get("result", {}).get("action_type") == atype
-                )
+                c = sum(1 for a in actions if a.get("result", {}).get("action_type") == atype)
                 counts.append(c)
             if any(c > 0 for c in counts):
                 traces.append(
@@ -866,12 +888,14 @@ def create_app(sim: SimData) -> Dash:
         seed_id = int(chain_value)
         for chain in SIM.chains:
             if chain.seed_post_id == seed_id:
-                return html.Div([
-                    html.Span(f"Size: {chain.size}", style={"marginRight": "15px"}),
-                    html.Span(f"Depth: {chain.depth}", style={"marginRight": "15px"}),
-                    html.Span(f"Breadth: {chain.breadth}", style={"marginRight": "15px"}),
-                    html.Span(f"Reach: {chain.reach}"),
-                ])
+                return html.Div(
+                    [
+                        html.Span(f"Size: {chain.size}", style={"marginRight": "15px"}),
+                        html.Span(f"Depth: {chain.depth}", style={"marginRight": "15px"}),
+                        html.Span(f"Breadth: {chain.breadth}", style={"marginRight": "15px"}),
+                        html.Span(f"Reach: {chain.reach}"),
+                    ]
+                )
         return "Chain not found."
 
     # --- Callback 5: Detail panel (node/edge tap) ---
@@ -955,34 +979,36 @@ def _render_agent_profile(agent_name: str) -> html.Div:
 
     recent_posts = sorted(posts, key=lambda p: (-p.step, -p.id))[:5]
 
-    return html.Div([
-        html.H4(f"@{agent_name}", style={"margin": "0 0 8px 0", "color": "#2c3e50"}),
-        html.Div(
-            style={"display": "flex", "gap": "20px", "marginBottom": "10px"},
-            children=[
-                html.Span(f"Posts: {len(posts)}"),
-                html.Span(f"Following: {len(following)}"),
-                html.Span(f"Followers: {len(followers)}"),
-            ],
-        ),
-        html.Div(
-            style={"marginBottom": "8px", "fontSize": "13px"},
-            children=[
-                html.Strong("Following: "),
-                html.Span(", ".join(sorted(following)) if following else "nobody"),
-            ],
-        ),
-        html.Div(
-            style={"marginBottom": "8px", "fontSize": "13px"},
-            children=[
-                html.Strong("Followers: "),
-                html.Span(", ".join(sorted(followers)) if followers else "none"),
-            ],
-        ),
-        html.Hr(),
-        html.H5("Recent Posts", style={"margin": "8px 0"}),
-        *[_render_post_card(p) for p in recent_posts],
-    ])
+    return html.Div(
+        [
+            html.H4(f"@{agent_name}", style={"margin": "0 0 8px 0", "color": "#2c3e50"}),
+            html.Div(
+                style={"display": "flex", "gap": "20px", "marginBottom": "10px"},
+                children=[
+                    html.Span(f"Posts: {len(posts)}"),
+                    html.Span(f"Following: {len(following)}"),
+                    html.Span(f"Followers: {len(followers)}"),
+                ],
+            ),
+            html.Div(
+                style={"marginBottom": "8px", "fontSize": "13px"},
+                children=[
+                    html.Strong("Following: "),
+                    html.Span(", ".join(sorted(following)) if following else "nobody"),
+                ],
+            ),
+            html.Div(
+                style={"marginBottom": "8px", "fontSize": "13px"},
+                children=[
+                    html.Strong("Followers: "),
+                    html.Span(", ".join(sorted(followers)) if followers else "none"),
+                ],
+            ),
+            html.Hr(),
+            html.H5("Recent Posts", style={"margin": "8px 0"}),
+            *[_render_post_card(p) for p in recent_posts],
+        ]
+    )
 
 
 def _render_post_card(post: Post) -> html.Div:

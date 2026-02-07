@@ -267,9 +267,6 @@ class SocialMediaEngine(engine_lib.Engine):
         while steps < max_steps:
             app.current_step = steps
 
-            if verbose:
-                print(termcolor.colored(f"\n=== Step {steps} ===", _PRINT_COLOR))
-
             # Create action spec for this step
             action_spec = entity_lib.ActionSpec(
                 call_to_action=self._action_prompt,
@@ -284,32 +281,18 @@ class SocialMediaEngine(engine_lib.Engine):
                 # Generate observation (timeline)
                 observation = app.format_timeline(entity.name)
 
-                if verbose:
-                    print(termcolor.colored(f"\n{entity.name} observes:", _PRINT_COLOR))
-                    # Truncate for display
-                    obs_lines = observation.split("\n")[:10]
-                    print("\n".join(obs_lines))
-                    if len(observation.split("\n")) > 10:
-                        print("...")
-
                 entity.observe(observation)
 
                 # Get action from agent
                 raw_action = entity.act(spec)
 
-                if verbose:
-                    print(termcolor.colored(f"{entity.name} action: {raw_action}", _PRINT_COLOR))
-
                 # Parse and execute action
                 parsed = parse_action(raw_action)
                 result = execute_action(app, entity.name, parsed)
 
-                if verbose:
-                    status = "OK" if result.success else "FAILED"
-                    print(termcolor.colored(f"  -> [{status}] {result.message}", _PRINT_COLOR))
-
                 return {
                     "entity": entity.name,
+                    "observation": observation,
                     "raw_action": raw_action,
                     "parsed": parsed,
                     "result": {
@@ -323,6 +306,30 @@ class SocialMediaEngine(engine_lib.Engine):
             # Run all entities in parallel
             tasks = {entity.name: functools.partial(_entity_step, entity) for entity in entities}
             step_results = concurrency.run_tasks(tasks)
+
+            # Print events sequentially in Concordia-compatible format
+            if verbose:
+                print(termcolor.colored("Terminate? No", _PRINT_COLOR))
+                for entity in entities:
+                    entity_result = step_results[entity.name]
+                    print(
+                        termcolor.colored(
+                            f"Entity {entity.name} observed: {entity_result['observation']}",
+                            _PRINT_COLOR,
+                        )
+                    )
+                    print(
+                        termcolor.colored(
+                            f"Entity {entity.name} chose action: {entity_result['raw_action']}",
+                            _PRINT_COLOR,
+                        )
+                    )
+                    print(
+                        termcolor.colored(
+                            f"The resolved event was: {entity_result['result']['message']}",
+                            _PRINT_COLOR,
+                        )
+                    )
 
             # Log this step
             if log is not None:
@@ -339,6 +346,10 @@ class SocialMediaEngine(engine_lib.Engine):
 
             if checkpoint_callback is not None:
                 checkpoint_callback(steps)
+
+        # Mark simulation end
+        if verbose:
+            print(termcolor.colored("Terminate? Yes", _PRINT_COLOR))
 
     def get_app_state(self) -> dict[str, Any]:
         """Get serializable app state for checkpoints."""
