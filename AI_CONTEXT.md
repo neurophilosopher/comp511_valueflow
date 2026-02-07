@@ -91,6 +91,8 @@ uv run cz c
 uv run pre-commit run --all-files && uv run pytest
 ```
 
+**Test suite**: 241 tests (run `uv run pytest` to verify)
+
 **Coverage threshold**: 70% minimum (configured in pyproject.toml)
 
 ## Architecture Overview
@@ -108,8 +110,16 @@ prefabs:
 - New scenarios: Create `config/scenario/name.yaml` + optional `scenarios/name/` directory with agents, game_masters, knowledge, events modules
 - New prefabs: Implement `concordia.typing.prefab.Prefab` interface
 - Knowledge builders: Define `builders.knowledge.module` and `builders.knowledge.function` in scenario config
+- New engines: Set `scenario.engine` to `sequential` (default), `simultaneous`, or `social_media`
 
 **Data Flow**: `run_experiment.py` → `MultiModelSimulator` → `BaseSimulator.build_config()` → `Simulation.play()`
+
+**Social Media Environment** (`src/environments/social_media/`):
+- `app.py`: `Post` dataclass + `SocialMediaApp` (in-memory platform: post, reply, like, boost, follow)
+- `engine.py`: `SocialMediaEngine` (parallel agent loop, action parsing)
+- `game_master.py`: `SocialMediaGameMaster` prefab
+- `analysis.py`: Transmission chain extraction, keyword overlap, network analysis
+- Activated by `engine: social_media` in scenario config
 
 ## Key Patterns
 
