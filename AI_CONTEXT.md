@@ -197,6 +197,10 @@ metrics:
 3. Apply via monkey-patch in `BaseSimulator.setup()` or similar initialization point
 4. Document in this section
 
+## Studies & Experiments
+
+When the user asks to start, organize, or analyze a study, follow the schema defined in **[`experiments/study_schema.md`](experiments/study_schema.md)**. It specifies the directory layout (`experiments/{study}/`), required YAML/JSON file formats, the 3-stage pipeline (simulate -> evaluate -> organize), and the standard results notebook structure (`notebooks/study_{name}.ipynb`).
+
 ## Conventions
 
 - Commits: Use conventional commits format (`feat:`, `fix:`, `refactor:`)
