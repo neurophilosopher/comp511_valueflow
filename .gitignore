@@ -157,6 +157,7 @@ Thumbs.db
 
 # Project specific
 outputs/
+experiments/
 multirun/
 logs/
 checkpoints/

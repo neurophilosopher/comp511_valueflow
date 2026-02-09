@@ -1,0 +1,45 @@
+# Study definition: Style Diversity vs. Model Capacity
+#
+# Maps the scientific hierarchy to actual experiment run paths.
+# Used by: scripts/organize_experiments.py
+
+study:
+  name: style_diversity
+  question: >-
+    Does increasing LLM capacity reduce repetitive/groupthink behavior
+    in multi-agent social media simulations?
+  scenarios:
+    - ai_conference
+    - misinformation
+
+hypotheses:
+  h1_model_capacity:
+    statement: >-
+      Larger language models produce more diverse agent behavior
+      (higher lexical diversity, lower self-BLEU, more varied actions).
+    independent_variable: model
+    prediction: >-
+      gpt4o outperforms gpt4o-mini on diversity metrics across scenarios.
+    status: testing
+
+    conditions:
+      gpt4o-mini:
+        runs:
+          - scenario: ai_conference
+            source: outputs/ai_conference_experiment/2026-02-06_23-50-55
+            eval: outputs/eval_style_diversity/baseline_gpt4o_mini/ai_conference/eval_step_10_checkpoint.json
+          - scenario: misinformation
+            source: outputs/misinformation_experiment/2026-02-05_17-02-18
+            eval: outputs/eval_style_diversity/baseline_gpt4o_mini/misinformation/eval_step_10_checkpoint.json
+
+      gpt4o:
+        runs:
+          - scenario: ai_conference
+            source: outputs/ai_conference_experiment/2026-02-07_09-43-11
+            eval: outputs/eval_style_diversity/gpt4o/ai_conference/eval_step_10_checkpoint.json
+          - scenario: misinformation
+            source: outputs/misinformation_experiment/2026-02-07_09-42-19
+            eval: outputs/eval_style_diversity/gpt4o/misinformation/eval_step_10_checkpoint.json
+
+analysis:
+  comparison: outputs/eval_style_diversity/comparison_4way/eval_comparison.json
