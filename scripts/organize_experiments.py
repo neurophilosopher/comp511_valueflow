@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Organize experiment outputs into a browsable scientific hierarchy.
 
-Reads a study definition YAML and builds an ``experiments/`` tree structured as:
-study -> hypothesis -> condition -> scenario -> run, with self-describing
-folder names and co-located eval results.
+Reads a study definition YAML (``experiments/{study}/study.yaml``) and builds
+the rest of the tree: hypothesis dirs, condition dirs, config/eval snapshots,
+and a study_summary.yaml + summary.json at the study level.
 
 Usage:
-    uv run python scripts/organize_experiments.py studies/style_diversity.yaml
-    uv run python scripts/organize_experiments.py studies/style_diversity.yaml --dry-run
-    uv run python scripts/organize_experiments.py studies/style_diversity.yaml --clean
+    uv run python scripts/organize_experiments.py experiments/style_diversity/study.yaml
+    uv run python scripts/organize_experiments.py experiments/style_diversity/study.yaml --dry-run
+    uv run python scripts/organize_experiments.py experiments/style_diversity/study.yaml --clean
 """
 
 from __future__ import annotations
@@ -131,18 +131,18 @@ def organize_study(data: dict[str, Any], *, dry_run: bool = False) -> Path:
         study_dir.mkdir(parents=True, exist_ok=True)
     print(f"Study: {study_name} -> {study_dir}")
 
-    # -- Write study.yaml (clean metadata, no source paths) --
+    # -- Write study_summary.yaml (clean metadata, no source paths) --
     study_meta = {
         "name": study_name,
         "question": study["question"],
         "scenarios": study["scenarios"],
         "hypotheses": list(data["hypotheses"].keys()),
     }
-    study_yaml = study_dir / "study.yaml"
+    study_summary_yaml = study_dir / "study_summary.yaml"
     if dry_run:
-        print(f"  [write] {study_yaml}")
+        print(f"  [write] {study_summary_yaml}")
     else:
-        with study_yaml.open("w") as f:
+        with study_summary_yaml.open("w") as f:
             yaml.dump(study_meta, f, default_flow_style=False, sort_keys=False)
 
     all_eval_results: list[dict[str, Any]] = []
@@ -345,7 +345,7 @@ def main() -> None:
     parser.add_argument(
         "study_file",
         type=Path,
-        help="Path to study definition YAML (e.g. studies/style_diversity.yaml)",
+        help="Path to study definition YAML (e.g. experiments/style_diversity/study.yaml)",
     )
     parser.add_argument(
         "--dry-run",

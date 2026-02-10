@@ -164,7 +164,7 @@ class TestBaseSimulator:
         """Test _create_engine returns SocialMediaEngine for social_media type."""
         from src.environments.social_media.engine import SocialMediaEngine
 
-        test_config.scenario.engine = "social_media"
+        test_config.environment.engine = "social_media"
         simulator = ConcreteSimulator(test_config)
         engine = simulator._create_engine()
         assert isinstance(engine, SocialMediaEngine)
@@ -173,7 +173,7 @@ class TestBaseSimulator:
         """Test _create_engine returns Simultaneous for simultaneous type."""
         from concordia.environment.engines import simultaneous
 
-        test_config.scenario.engine = "simultaneous"
+        test_config.environment.engine = "simultaneous"
         simulator = ConcreteSimulator(test_config)
         engine = simulator._create_engine()
         assert isinstance(engine, simultaneous.Simultaneous)

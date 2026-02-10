@@ -87,7 +87,7 @@ uv run python run_experiment.py --cfg job
 | `ai_conference` | social_media | Two echo chambers (conference attendees vs. protesters) collide on social media; studies groupthink dynamics |
 | `debate` | sequential | Formal debate with debaters, moderator, and judges |
 
-Social media scenarios use `engine: social_media` in their scenario config, which activates the `SocialMediaEngine` for parallel agent execution with feed-based interaction.
+Social media scenarios auto-select the `social_media` environment config via a Hydra defaults override, which activates the `SocialMediaEngine` for parallel agent execution with feed-based interaction.
 
 ## Project Structure
 
@@ -107,7 +107,8 @@ simulator/
 │   │   └── multi_model.yaml
 │   ├── environment/               # Environment settings
 │   │   ├── generic_world.yaml
-│   │   └── game_theoretic.yaml
+│   │   ├── game_theoretic.yaml
+│   │   └── social_media.yaml
 │   ├── scenario/                  # Scenario definitions
 │   │   ├── marketplace.yaml
 │   │   ├── election.yaml
@@ -256,7 +257,7 @@ The social media environment provides an in-memory platform for simulating infor
 - **Engine**: `SocialMediaEngine` runs parallel agent actions each step
 - **Analysis**: Transmission chain extraction, keyword overlap, network analysis
 
-Activated by setting `engine: social_media` in a scenario config. Used by the `misinformation` and `ai_conference` scenarios.
+Activated by the `social_media` environment config (`config/environment/social_media.yaml`). Social media scenarios auto-select this environment via a Hydra defaults override.
 
 ```bash
 # Run social media scenarios
@@ -314,7 +315,7 @@ Computes 10 metrics per agent: self-BLEU, lexical diversity, content evolution, 
 Organize simulation runs into a browsable study/hypothesis/condition hierarchy:
 
 ```bash
-uv run python scripts/organize_experiments.py ...
+uv run python scripts/organize_experiments.py experiments/style_diversity/study.yaml
 ```
 
 See `experiments/study_schema.md` for the full schema covering directory layout, file formats, and the standard results notebook structure.
@@ -352,7 +353,7 @@ prefabs:
 2. (Optional) Create custom prefabs in `scenarios/my_scenario/agents.py`
 3. Run: `uv run python run_experiment.py scenario=my_scenario`
 
-For social media scenarios, set `engine: social_media` and include `social_media`, `initial_graph`, and `seed_posts` sections (see `config/scenario/ai_conference.yaml` for a complete example).
+For social media scenarios, add `- override /environment: social_media` to defaults and include `initial_graph` and `seed_posts` sections (see `config/scenario/ai_conference.yaml` for a complete example).
 
 ## Development
 

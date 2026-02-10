@@ -1,7 +1,10 @@
 # Study definition: Style Diversity vs. Model Capacity
 #
-# Maps the scientific hierarchy to actual experiment run paths.
+# This is the single source of truth for the study. It defines the scientific
+# hierarchy AND maps conditions to concrete run/eval paths.
+#
 # Used by: scripts/organize_experiments.py
+#   uv run python scripts/organize_experiments.py experiments/style_diversity/study.yaml
 
 study:
   name: style_diversity

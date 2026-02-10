@@ -110,7 +110,7 @@ prefabs:
 - New scenarios: Create `config/scenario/name.yaml` + optional `scenarios/name/` directory with agents, game_masters, knowledge, events modules
 - New prefabs: Implement `concordia.typing.prefab.Prefab` interface
 - Knowledge builders: Define `builders.knowledge.module` and `builders.knowledge.function` in scenario config
-- New engines: Set `scenario.engine` to `sequential` (default), `simultaneous`, or `social_media`
+- New engines: Set `environment.engine` to `sequential` (default), `simultaneous`, or `social_media`
 
 **Data Flow**: `run_experiment.py` → `MultiModelSimulator` → `BaseSimulator.build_config()` → `Simulation.play()`
 
@@ -119,7 +119,7 @@ prefabs:
 - `engine.py`: `SocialMediaEngine` (parallel agent loop, action parsing)
 - `game_master.py`: `SocialMediaGameMaster` prefab
 - `analysis.py`: Transmission chain extraction, keyword overlap, network analysis
-- Activated by `engine: social_media` in scenario config
+- Activated by `environment: social_media` (scenarios use `- override /environment: social_media` in their defaults list)
 
 ## Key Patterns
 

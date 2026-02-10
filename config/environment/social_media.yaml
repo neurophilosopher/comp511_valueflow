@@ -1,0 +1,11 @@
+# Social Media Environment Configuration
+# For scenarios using the in-memory social media platform
+
+name: social_media
+description: "In-memory social media platform environment"
+
+# Engine type — selects SocialMediaEngine for parallel execution
+engine: social_media
+
+# Platform parameters
+timeline_limit: 20

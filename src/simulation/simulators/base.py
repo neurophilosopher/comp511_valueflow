@@ -359,13 +359,13 @@ class BaseSimulator(ABC):
         )
 
     def _create_engine(self) -> engine_lib.Engine:
-        """Create simulation engine based on scenario configuration.
+        """Create simulation engine based on environment configuration.
 
         Returns:
             Engine instance (Sequential, Simultaneous, or SocialMedia).
         """
-        scenario_config = self._config.scenario
-        engine_type = scenario_config.get("engine", "sequential")
+        env_config = self._config.get("environment", {})
+        engine_type = env_config.get("engine", "sequential")
 
         if engine_type == "social_media":
             from src.environments.social_media.engine import SocialMediaEngine

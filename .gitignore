@@ -157,7 +157,11 @@ Thumbs.db
 
 # Project specific
 outputs/
-experiments/
+experiments/*
+!experiments/study_schema.md
+!experiments/*/
+experiments/*/*
+!experiments/*/study.yaml
 multirun/
 logs/
 checkpoints/

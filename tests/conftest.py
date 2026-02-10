@@ -150,6 +150,9 @@ def test_config() -> DictConfig:
                 },
             },
         },
+        "environment": {
+            "name": "generic_world",
+        },
         "evaluation": {
             "name": "basic_metrics",
         },
