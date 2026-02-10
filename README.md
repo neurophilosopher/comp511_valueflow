@@ -5,10 +5,12 @@ A flexible multi-agent simulation framework built on [Concordia v2](https://gith
 ## Features
 
 - **Hydra Configuration**: Composable YAML configurations for experiments, models, scenarios
-- **Multi-Model Support**: GPT-4, Claude, Ollama with per-agent model assignment
-- **Dynamic Scenarios**: Switch scenarios via config (marketplace, election, misinformation, custom)
+- **Multi-Model Support**: GPT-4o, GPT-4o-mini, Claude, Ollama with per-agent model assignment
+- **Dynamic Scenarios**: Switch scenarios via config (marketplace, election, misinformation, ai_conference, debate)
 - **Social Media Environment**: In-memory social media platform with posts, replies, likes, boosts, follows
 - **Evaluation Probes**: Query agents at checkpoints without affecting their memory (categorical, numeric, boolean)
+- **Style Diversity Evaluation**: Reference-free metrics (self-BLEU, lexical diversity, content evolution, etc.) for diagnosing repetitive agent behavior
+- **Experiment Organization**: Structured study/hypothesis/condition tree for reproducible experiments (see `experiments/study_schema.md`)
 - **Modular Architecture**: Engines, simulators, and components can be mixed and matched
 - **Extensible Design**: Easy to add new scenarios, agents, game masters, and components
 - **Full Dev Infrastructure**: Pre-commit hooks, CI/CD, type checking, 241 tests
@@ -19,8 +21,8 @@ A flexible multi-agent simulation framework built on [Concordia v2](https://gith
 
 ```bash
 # Clone and install
-git clone https://github.com/yourusername/concordia-sim.git
-cd concordia-sim/simulator
+git clone git@github.com:mptouzel/scensim.git
+cd scensim/simulator
 
 # Using uv (recommended)
 uv sync
@@ -51,14 +53,19 @@ ANTHROPIC_API_KEY=your-key-here
 # Run with default configuration (marketplace)
 uv run python run_experiment.py
 
-# Switch to misinformation scenario (social media environment)
+# Social media scenarios
 uv run python run_experiment.py scenario=misinformation
+uv run python run_experiment.py scenario=ai_conference
 
-# Switch to election scenario
+# Traditional scenarios
 uv run python run_experiment.py scenario=election
+uv run python run_experiment.py scenario=debate
 
 # Override parameters
 uv run python run_experiment.py simulation.execution.max_steps=50 model=claude
+
+# Switch model
+uv run python run_experiment.py scenario=ai_conference model=gpt4o
 
 # Multi-model simulation
 uv run python run_experiment.py model=multi_model
@@ -69,6 +76,18 @@ uv run python run_experiment.py --quick-test
 # View configuration without running
 uv run python run_experiment.py --cfg job
 ```
+
+## Scenarios
+
+| Scenario | Engine | Description |
+|----------|--------|-------------|
+| `marketplace` | sequential | Buyers, sellers, and an auctioneer negotiate trades |
+| `election` | sequential | Voters, candidates, and media interact during a campaign |
+| `misinformation` | social_media | Information spread and manipulation on a social media platform |
+| `ai_conference` | social_media | Two echo chambers (conference attendees vs. protesters) collide on social media; studies groupthink dynamics |
+| `debate` | sequential | Formal debate with debaters, moderator, and judges |
+
+Social media scenarios use `engine: social_media` in their scenario config, which activates the `SocialMediaEngine` for parallel agent execution with feed-based interaction.
 
 ## Project Structure
 
@@ -81,7 +100,8 @@ simulator/
 │   │   ├── sequential.yaml
 │   │   └── parallel.yaml
 │   ├── model/                     # Model configurations
-│   │   ├── gpt4.yaml
+│   │   ├── gpt4.yaml             # GPT-4o-mini (default)
+│   │   ├── gpt4o.yaml            # GPT-4o
 │   │   ├── claude.yaml
 │   │   ├── mock.yaml
 │   │   └── multi_model.yaml
@@ -91,7 +111,9 @@ simulator/
 │   ├── scenario/                  # Scenario definitions
 │   │   ├── marketplace.yaml
 │   │   ├── election.yaml
-│   │   └── misinformation.yaml
+│   │   ├── misinformation.yaml
+│   │   ├── ai_conference.yaml
+│   │   └── debate.yaml
 │   └── evaluation/                # Evaluation metrics
 │       ├── basic_metrics.yaml
 │       ├── election.yaml
@@ -106,9 +128,12 @@ simulator/
 │   ├── election/                  # Election scenario
 │   │   ├── agents.py, game_masters.py, knowledge.py, events.py
 │   │   └── data/knowledge.yaml
-│   └── misinformation/            # Misinformation scenario (social media)
-│       ├── agents.py              # SocialMediaUserAgent prefab
-│       └── game_masters.py        # MisinformationGameMaster
+│   ├── misinformation/            # Misinformation scenario (social media)
+│   │   ├── agents.py              # SocialMediaUserAgent prefab
+│   │   └── game_masters.py        # MisinformationGameMaster
+│   └── ai_conference/             # AI Conference groupthink scenario (social media)
+│       ├── agents.py              # AIConferenceAgent prefab
+│       └── game_masters.py        # AIConferenceGameMaster
 ├── src/                           # Core library
 │   ├── simulation/                # Simulation infrastructure
 │   │   ├── simulation.py          # Core Simulation class
@@ -149,30 +174,23 @@ simulator/
 ├── scripts/                       # Utility scripts
 │   ├── run_social_media_sim.py    # Standalone social media runner
 │   ├── analyze_social_media.py    # CLI analysis tool
-│   └── explore_dashboard.py       # Interactive Dash explorer
+│   ├── explore_dashboard.py       # Interactive Dash explorer
+│   ├── eval_style_diversity.py    # Style diversity evaluation metrics
+│   └── organize_experiments.py    # Organize runs into study/hypothesis tree
+├── experiments/                   # Organized experiment results (gitignored except study_schema.md)
+│   ├── study_schema.md            # Canonical study structure template
+│   └── {study_name}/              # Per-study results tree
+├── notebooks/                     # Results notebooks
+│   └── study_style_diversity.ipynb
 └── tests/                         # Test suite (241 tests)
     ├── conftest.py                # Shared fixtures
     ├── environments/              # Social media environment tests
-    │   ├── test_social_media_app.py
-    │   ├── test_social_media_engine.py
-    │   ├── test_social_media_game_master.py
-    │   └── test_social_media_analysis.py
     ├── test_agents/
-    │   └── test_basic_entity.py
     ├── test_simulators/
-    │   ├── test_base_simulator.py
-    │   └── test_multi_model.py
     ├── test_evaluation/
-    │   ├── test_probes.py
-    │   └── test_probe_runner.py
     ├── test_utils/
-    │   └── test_validation.py
     ├── test_scenarios/
-    │   ├── test_marketplace_agents.py
-    │   ├── test_marketplace_events.py
-    │   └── test_marketplace_knowledge.py
     └── test_integration/
-        └── test_simulation_run.py
 ```
 
 ## Configuration System
@@ -196,6 +214,9 @@ defaults:
 ```bash
 # Use Claude instead of GPT-4
 uv run python run_experiment.py model=claude
+
+# Use GPT-4o for higher quality
+uv run python run_experiment.py model=gpt4o
 
 # Parallel simulation with multi-model
 uv run python run_experiment.py simulation=parallel model=multi_model
@@ -235,9 +256,12 @@ The social media environment provides an in-memory platform for simulating infor
 - **Engine**: `SocialMediaEngine` runs parallel agent actions each step
 - **Analysis**: Transmission chain extraction, keyword overlap, network analysis
 
+Activated by setting `engine: social_media` in a scenario config. Used by the `misinformation` and `ai_conference` scenarios.
+
 ```bash
-# Run misinformation scenario
+# Run social media scenarios
 uv run python run_experiment.py scenario=misinformation
+uv run python run_experiment.py scenario=ai_conference
 
 # Standalone runner (mock mode)
 uv run python scripts/run_social_media_sim.py
@@ -249,7 +273,9 @@ uv run python scripts/analyze_social_media.py path/to/checkpoint.json
 uv run python scripts/explore_dashboard.py path/to/checkpoint.json
 ```
 
-## Evaluation Probes
+## Evaluation
+
+### Probes
 
 Query agents at checkpoints without affecting their memory:
 
@@ -265,6 +291,33 @@ metrics:
 ```
 
 Probe types: `categorical`, `numeric` (min/max range), `boolean` (yes/no).
+
+### Style Diversity Metrics
+
+Reference-free evaluation of agent linguistic diversity:
+
+```bash
+# Evaluate a single run
+uv run python scripts/eval_style_diversity.py path/to/checkpoint.json
+
+# Compare two runs
+uv run python scripts/eval_style_diversity.py ckpt1.json ckpt2.json --compare
+
+# Export to file
+uv run python scripts/eval_style_diversity.py checkpoint.json -o results/
+```
+
+Computes 10 metrics per agent: self-BLEU, lexical diversity, content evolution, opener variety, action entropy, near-duplicate rate, target fixation, action diversity, new post rate, and inter-agent distinctiveness.
+
+### Experiment Organization
+
+Organize simulation runs into a browsable study/hypothesis/condition hierarchy:
+
+```bash
+uv run python scripts/organize_experiments.py ...
+```
+
+See `experiments/study_schema.md` for the full schema covering directory layout, file formats, and the standard results notebook structure.
 
 ## Creating Custom Scenarios
 
@@ -298,6 +351,8 @@ prefabs:
 
 2. (Optional) Create custom prefabs in `scenarios/my_scenario/agents.py`
 3. Run: `uv run python run_experiment.py scenario=my_scenario`
+
+For social media scenarios, set `engine: social_media` and include `social_media`, `initial_graph`, and `seed_posts` sections (see `config/scenario/ai_conference.yaml` for a complete example).
 
 ## Development
 
