@@ -15,7 +15,6 @@ from concordia.associative_memory import basic_associative_memory
 from concordia.components import agent as agent_components
 from concordia.components import game_master as gm_components
 from concordia.language_model import language_model
-from concordia.thought_chains import thought_chains
 from concordia.typing import prefab as prefab_lib
 
 
@@ -135,7 +134,7 @@ class BasicGameMaster(prefab_lib.Prefab):
 
         # === EVENT RESOLUTION ===
         # Default thought chain: identity just passes through the event
-        event_resolution_steps = [thought_chains.identity]
+        event_resolution_steps = [gm_components.event_resolution.identity]
 
         resolution_key = gm_components.switch_act.DEFAULT_RESOLUTION_COMPONENT_KEY
         components[resolution_key] = gm_components.event_resolution.EventResolution(
