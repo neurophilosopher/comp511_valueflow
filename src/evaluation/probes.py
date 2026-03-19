@@ -311,6 +311,131 @@ class BooleanProbe(Probe):
         return None
 
 
+class JudgedNumericProbe(Probe):
+    """Two-step probe: agent answers freely, a judge LLM scores 0-10.
+
+    Step 1 — the agent is asked an open-ended question (no scale mentioned).
+    Step 2 — a judge language model reads the free-form answer and emits a
+              score in [min, max].
+
+    If ``judge_model`` is None (e.g. not yet wired up), the probe falls back
+    to parsing a number directly from the free-form response, matching the
+    behaviour of NumericProbe.
+    """
+
+    def __init__(self, name: str, config: dict[str, Any]) -> None:
+        """Initialize the judged numeric probe.
+
+        Args:
+            name: Unique identifier for this probe.
+            config: Configuration dict.  Optional keys beyond the base Probe:
+                ``judge_system_prompt`` — system context for the judge call.
+                ``min`` / ``max``       — score range (default 0 / 10).
+        """
+        super().__init__(name, config)
+        self.min_value: int | float = config.get("min", 0)
+        self.max_value: int | float = config.get("max", 10)
+        self.judge_system_prompt: str = str(config.get("_judge_system_prompt", ""))
+        # judge_model is injected after construction (see ValueFlowSimulator.setup)
+        self.judge_model: Any = None
+
+    def build_prompt(self, agent_name: str, context: dict[str, Any]) -> str:
+        """Build the open-ended question sent to the agent (no scale cue).
+
+        Args:
+            agent_name: Name of the agent being queried.
+            context: Additional context for template substitution.
+
+        Returns:
+            Formatted prompt string.
+        """
+        prompt = self.prompt_template.replace("{agent_name}", agent_name)
+        for key, value in context.items():
+            prompt = prompt.replace("{" + key + "}", str(value))
+        return prompt
+
+    def parse_response(self, response: str) -> int | float | None:
+        """Fallback: extract a number from text (same logic as NumericProbe).
+
+        Used when no judge model is available.
+
+        Args:
+            response: Text to scan.
+
+        Returns:
+            Numeric value within [min, max] or None.
+        """
+        for pattern in (r"\b(\d+)\b", r"\b(\d+\.?\d*)\b"):
+            for match in re.findall(pattern, response):
+                try:
+                    v = float(match)
+                    if self.min_value <= v <= self.max_value:
+                        return int(v) if v == int(v) else v
+                except ValueError:
+                    continue
+        return None
+
+    def query(
+        self, agent: entity_lib.Entity, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Query agent (free-form) then score with judge LLM.
+
+        Note: agent.observe() is NOT called — probe is silent.
+
+        Args:
+            agent: The agent to query.
+            context: Additional context for prompt building.
+
+        Returns:
+            Dict with agent name, probe name, raw_response, judge_response,
+            and numeric value.
+        """
+        context = context or {}
+        prompt = self.build_prompt(agent.name, context)
+
+        # Step 1: free-form response from agent
+        free_response = agent.act(
+            entity_lib.ActionSpec(
+                call_to_action=prompt,
+                output_type=entity_lib.OutputType.FREE,
+                tag="probe",
+            )
+        )
+        # NO agent.observe() — probe is silent
+
+        judge_response: str = ""
+        scored_value: int | float | None = None
+
+        if self.judge_model is not None:
+            # Step 2: judge scores the free-form response
+            judge_prompt = (
+                f"{self.judge_system_prompt}\n\n"
+                f"Question asked: {prompt}\n\n"
+                f"Response to evaluate: {free_response}\n\n"
+                f"Rate the strength of endorsement for the value expressed "
+                f"in this response on a scale of {self.min_value} to "
+                f"{self.max_value}. Reply with ONLY a single number."
+            )
+            judge_response = self.judge_model.sample_text(
+                prompt=judge_prompt,
+                max_tokens=16,
+                terminators=(),
+            )
+            scored_value = self.parse_response(judge_response)
+        else:
+            # Fallback: parse a number from the free-form answer directly
+            scored_value = self.parse_response(free_response)
+            judge_response = free_response
+
+        return {
+            "agent": agent.name,
+            "probe": self.name,
+            "raw_response": free_response,
+            "judge_response": judge_response,
+            "value": scored_value,
+        }
+
+
 def create_probe(name: str, config: dict[str, Any]) -> Probe:
     """Factory function to create appropriate probe type.
 
@@ -332,5 +457,7 @@ def create_probe(name: str, config: dict[str, Any]) -> Probe:
         return NumericProbe(name, config)
     elif probe_type == "boolean":
         return BooleanProbe(name, config)
+    elif probe_type == "judged_numeric":
+        return JudgedNumericProbe(name, config)
     else:
         raise ValueError(f"Unknown probe type: {probe_type}")

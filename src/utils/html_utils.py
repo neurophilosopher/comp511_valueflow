@@ -109,9 +109,7 @@ class PythonObjectToHTMLConverter:
     def _convert_python_object(self, python_object):
         """Converts a python object to HTML."""
         if isinstance(python_object, str):
-            self.html_writer.write(
-                html.escape(python_object).replace("\n", "<br />")
-            )
+            self.html_writer.write(html.escape(python_object).replace("\n", "<br />"))
 
         elif isinstance(python_object, list):
             for item in python_object:
@@ -177,8 +175,6 @@ def combine_html_pages(html_pages, tab_names, summary="", title="Experiment logs
     html_code += "</div>\n"
 
     for i, html_page in enumerate(html_pages):
-        html_code += (
-            f'<div id="{tab_names[i]}" class="tabcontent">' + html_page + "</div>\n"
-        )
+        html_code += f'<div id="{tab_names[i]}" class="tabcontent">' + html_page + "</div>\n"
 
     return html_code

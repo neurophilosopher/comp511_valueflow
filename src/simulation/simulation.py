@@ -24,8 +24,9 @@ from concordia.typing import entity_component
 from concordia.typing import prefab as prefab_lib
 from concordia.typing import simulation as simulation_lib
 from concordia.utils import helper_functions as helper_functions_lib
-from src.utils import html_utils as html_lib
 from omegaconf import DictConfig
+
+from src.utils import html_utils as html_lib
 
 if TYPE_CHECKING:
     from src.evaluation.probe_runner import ProbeRunner

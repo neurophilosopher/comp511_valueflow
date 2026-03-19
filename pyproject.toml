@@ -187,3 +187,8 @@ update_changelog_on_bump = true
 
 [tool.bandit]
 skips = ["B311"]  # random is fine for simulation, not used for security
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]

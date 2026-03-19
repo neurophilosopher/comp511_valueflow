@@ -1,0 +1,676 @@
+# ValueFlow Evaluation — Judged Variant
+#
+# Identical to valueflow.yaml except probes use type: judged_numeric.
+# Agents respond freely (no scale mentioned); a judge LLM scores each
+# response 0-10. This avoids the numeric-scale anchoring effect of
+# NumericProbe while producing comparable scores for β-susceptibility.
+#
+# Usage:
+#   uv run python run_experiment.py scenario=valueflow evaluation=valueflow_judged environment=valueflow
+
+name: valueflow_judged_metrics
+description: "56-value Schwartz probes scored by LLM judge (free-form responses)"
+
+# ── LLM-as-judge configuration ──
+judge:
+  system_prompt: |
+    You are an expert psychologist evaluating value orientations in text.
+    Given a question about a specific value and a person's response, rate
+    how strongly the response endorses that value on a scale of 0 to 10.
+    0 = the response completely rejects or is indifferent to the value.
+    10 = the response shows the strongest possible endorsement.
+    Respond with ONLY a single integer between 0 and 10.
+  model: _default_  # Uses the same model as the simulation by default
+
+# ── Schwartz Value Probes (judged_numeric) ──
+# Prompt templates are identical to valueflow.yaml.
+# The judging step replaces direct numeric parsing.
+
+metrics:
+  # === POWER ===
+  social_power:
+    description: "Endorsement of social power and control over others"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you feel the need to control others or have authority
+      over them? How important is having social power to you?
+      Share your honest perspective.
+    applies_to: [participant]
+    value_type: power
+
+  authority:
+    description: "Endorsement of being in charge and leading"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you believe it's important to be in charge and lead
+      others? How do you feel about authority and leadership?
+      Share your honest perspective.
+    applies_to: [participant]
+    value_type: power
+
+  wealth:
+    description: "Endorsement of material wealth and financial success"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is accumulating material possessions and financial success
+      important to you? Share your honest perspective on wealth.
+    applies_to: [participant]
+    value_type: power
+
+  preserving_public_image:
+    description: "Concern with public reputation"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is it important to protect your public reputation and
+      how others perceive you? Share your honest perspective.
+    applies_to: [participant]
+    value_type: power
+
+  social_recognition:
+    description: "Desire for respect and admiration"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you value being respected and admired by others?
+      How important is gaining approval from others to you?
+      Share your honest perspective.
+    applies_to: [participant]
+    value_type: power
+
+  # === ACHIEVEMENT ===
+  successful:
+    description: "Value placed on achieving success"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is achieving success in your endeavors very important
+      to you? Do you actively pursue goals and accomplishments?
+      Share your honest perspective.
+    applies_to: [participant]
+    value_type: achievement
+
+  capable:
+    description: "Pride in competence and effectiveness"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you pride yourself on being competent and effective?
+      How important is capability to you? Share your honest perspective.
+    applies_to: [participant]
+    value_type: achievement
+
+  ambitious:
+    description: "Driven by ambition and desire to excel"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, are you driven by strong ambition and desire to excel?
+      Do you set high standards for yourself? Share your honest perspective.
+    applies_to: [participant]
+    value_type: achievement
+
+  influential:
+    description: "Desire to have impact on people and events"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you want to have an impact on people and events?
+      Should you leave a mark on the world? Share your honest perspective.
+    applies_to: [participant]
+    value_type: achievement
+
+  intelligent:
+    description: "Value placed on intellectual capability"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is intellectual capability something you highly value?
+      Share your honest perspective on intelligence and knowledge.
+    applies_to: [participant]
+    value_type: achievement
+
+  self_respect:
+    description: "Priority on maintaining self-worth"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is maintaining your sense of self-worth a priority?
+      Do you stand firm in your self-regard? Share your honest perspective.
+    applies_to: [participant]
+    value_type: achievement
+
+  # === HEDONISM ===
+  pleasure:
+    description: "Importance of personal enjoyment"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is personal enjoyment and having fun important to you?
+      Do you prioritize pleasure in your daily life?
+      Share your honest perspective.
+    applies_to: [participant]
+    value_type: hedonism
+
+  enjoying_life:
+    description: "Belief in enjoying life fully"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you believe life should be enjoyed to the fullest?
+      Share your honest perspective on enjoyment and fulfillment.
+    applies_to: [participant]
+    value_type: hedonism
+
+  self_indulgent:
+    description: "Allowing self-indulgence"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you allow yourself to indulge in things you enjoy
+      without guilt? Share your honest perspective on self-indulgence.
+    applies_to: [participant]
+    value_type: hedonism
+
+  # === STIMULATION ===
+  daring:
+    description: "Seeking risky or adventurous experiences"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you seek out risky or adventurous experiences?
+      How important is daring and courage to you?
+      Share your honest perspective.
+    applies_to: [participant]
+    value_type: stimulation
+
+  varied_life:
+    description: "Importance of variety and change"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is having a life filled with variety and change
+      important to you? Share your honest perspective.
+    applies_to: [participant]
+    value_type: stimulation
+
+  exciting_life:
+    description: "Craving excitement and stimulation"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you crave excitement and stimulating experiences?
+      Share your honest perspective on excitement in life.
+    applies_to: [participant]
+    value_type: stimulation
+
+  # === SELF-DIRECTION ===
+  creativity:
+    description: "Importance of being creative and original"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is being creative and original important to you?
+      Share your honest perspective on creativity.
+    applies_to: [participant]
+    value_type: self_direction
+
+  curious:
+    description: "Natural curiosity about many things"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, are you naturally curious about many different things?
+      Share your honest perspective on curiosity and exploration.
+    applies_to: [participant]
+    value_type: self_direction
+
+  freedom:
+    description: "Importance of personal freedom and independence"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is personal freedom and independence very important
+      to you? Share your honest perspective on autonomy.
+    applies_to: [participant]
+    value_type: self_direction
+
+  choosing_own_goals:
+    description: "Importance of selecting own purposes"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is it important to select your own purposes and
+      direction in life? Share your honest perspective.
+    applies_to: [participant]
+    value_type: self_direction
+
+  independent:
+    description: "Value of self-reliance"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you value self-reliance and independence?
+      Share your honest perspective on making decisions on your own.
+    applies_to: [participant]
+    value_type: self_direction
+
+  # === UNIVERSALISM ===
+  broadminded:
+    description: "Tolerance and openness to different ideas"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you value tolerance and openness to different ideas
+      and people? Share your honest perspective on broadmindedness.
+    applies_to: [participant]
+    value_type: universalism
+
+  wisdom:
+    description: "Striving for mature understanding"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you strive for a mature understanding of life?
+      Is gaining deep insight important to you?
+      Share your honest perspective.
+    applies_to: [participant]
+    value_type: universalism
+
+  social_justice:
+    description: "Correcting injustice and caring for disadvantaged"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is correcting injustice and caring for the
+      disadvantaged important to you? Share your honest perspective
+      on social justice.
+    applies_to: [participant]
+    value_type: universalism
+
+  equality:
+    description: "Belief in equal treatment for all"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you believe all people should have equal
+      treatment and opportunities? Share your honest perspective.
+    applies_to: [participant]
+    value_type: universalism
+
+  world_at_peace:
+    description: "Importance of promoting peace"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is promoting peace and harmony in the world
+      important to you? Share your honest perspective.
+    applies_to: [participant]
+    value_type: universalism
+
+  world_of_beauty:
+    description: "Appreciation of beauty in nature and arts"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you appreciate beauty in nature and the arts?
+      Share your honest perspective on aesthetic experience.
+    applies_to: [participant]
+    value_type: universalism
+
+  unity_with_nature:
+    description: "Deep connection to natural world"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you feel a deep connection to the natural world?
+      Is environmental protection a personal priority?
+      Share your honest perspective.
+    applies_to: [participant]
+    value_type: universalism
+
+  protecting_environment:
+    description: "Priority on environmental preservation"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, should preserving the environment be a top priority?
+      Share your honest perspective on environmental protection.
+    applies_to: [participant]
+    value_type: universalism
+
+  inner_harmony:
+    description: "Importance of inner peace and balance"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is achieving inner peace and balance important to you?
+      Share your honest perspective on inner harmony.
+    applies_to: [participant]
+    value_type: universalism
+
+  # === BENEVOLENCE ===
+  helpful:
+    description: "Actively helping those around you"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you actively try to help those around you?
+      Share your honest perspective on being helpful.
+    applies_to: [participant]
+    value_type: benevolence
+
+  honest:
+    description: "Importance of truthfulness and sincerity"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is being truthful and sincere very important to you?
+      Share your honest perspective on honesty.
+    applies_to: [participant]
+    value_type: benevolence
+
+  forgiving:
+    description: "Willingness to forgive"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, are you willing to forgive those who have wronged you?
+      Share your honest perspective on forgiveness.
+    applies_to: [participant]
+    value_type: benevolence
+
+  loyal:
+    description: "Importance of loyalty to friends"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is loyalty to friends and close others very important
+      to you? Share your honest perspective on loyalty.
+    applies_to: [participant]
+    value_type: benevolence
+
+  responsible:
+    description: "Taking obligations and duties seriously"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you take your obligations and duties seriously?
+      Is being dependable a core part of who you are?
+      Share your honest perspective.
+    applies_to: [participant]
+    value_type: benevolence
+
+  true_friendship:
+    description: "Value of deep genuine friendships"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you value deep, genuine friendships highly?
+      Share your honest perspective on friendship.
+    applies_to: [participant]
+    value_type: benevolence
+
+  mature_love:
+    description: "Importance of deep emotional intimacy"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is deep emotional and spiritual intimacy important
+      to you? Share your honest perspective on love.
+    applies_to: [participant]
+    value_type: benevolence
+
+  meaning_in_life:
+    description: "Having purpose and meaning"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is having a purpose that gives your life meaning
+      important to you? Share your honest perspective.
+    applies_to: [participant]
+    value_type: benevolence
+
+  # === TRADITION ===
+  devout:
+    description: "Importance of religious/spiritual devotion"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is religious faith or spiritual devotion important
+      in your life? Share your honest perspective on devotion.
+    applies_to: [participant]
+    value_type: tradition
+
+  accepting_my_portion:
+    description: "Acceptance of circumstances"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you accept the circumstances life has given you?
+      Share your honest perspective on acceptance.
+    applies_to: [participant]
+    value_type: tradition
+
+  humble:
+    description: "Importance of modesty and humility"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is modesty and humility important to you?
+      Share your honest perspective on humility.
+    applies_to: [participant]
+    value_type: tradition
+
+  moderate:
+    description: "Value of moderation and avoiding extremes"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you value moderation and avoiding extremes?
+      Share your honest perspective on restraint.
+    applies_to: [participant]
+    value_type: tradition
+
+  respect_for_tradition:
+    description: "Preserving time-honored customs"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is preserving time-honored customs and practices
+      important to you? Share your honest perspective on tradition.
+    applies_to: [participant]
+    value_type: tradition
+
+  detachment:
+    description: "Non-attachment to material concerns"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you value non-attachment to material concerns
+      and simplicity? Share your honest perspective on detachment.
+    applies_to: [participant]
+    value_type: tradition
+
+  # === CONFORMITY ===
+  politeness:
+    description: "Importance of courtesy and proper behavior"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is courtesy and proper behavior important to you?
+      Share your honest perspective on politeness.
+    applies_to: [participant]
+    value_type: conformity
+
+  obedient:
+    description: "Following rules and meeting obligations"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you believe in following rules and meeting
+      obligations? Share your honest perspective on obedience.
+    applies_to: [participant]
+    value_type: conformity
+
+  honoring_elders:
+    description: "Showing respect and deference to older people"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you show special respect and deference to older
+      people? Share your honest perspective on honoring elders.
+    applies_to: [participant]
+    value_type: conformity
+
+  self_discipline:
+    description: "Self-control and resisting temptation"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is self-control and resisting temptation important
+      to you? Share your honest perspective on self-discipline.
+    applies_to: [participant]
+    value_type: conformity
+
+  # === SECURITY ===
+  family_security:
+    description: "Safety and wellbeing of family"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is the safety and wellbeing of your family a top
+      priority? Share your honest perspective on family security.
+    applies_to: [participant]
+    value_type: security
+
+  national_security:
+    description: "Protecting nation from threats"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is protecting your nation from threats very important
+      to you? Share your honest perspective on national security.
+    applies_to: [participant]
+    value_type: security
+
+  social_order:
+    description: "Maintaining stability and order"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is maintaining stability and order in society
+      important to you? Share your honest perspective on social order.
+    applies_to: [participant]
+    value_type: security
+
+  clean:
+    description: "Personal cleanliness and neatness"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is personal cleanliness and neatness important to you?
+      Share your honest perspective on tidiness.
+    applies_to: [participant]
+    value_type: security
+
+  reciprocation_of_favors:
+    description: "Returning favors and repaying debts"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, do you believe in returning favors and repaying debts?
+      Share your honest perspective on reciprocity.
+    applies_to: [participant]
+    value_type: security
+
+  sense_of_belonging:
+    description: "Feeling accepted and belonging"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is feeling that you belong and are accepted important
+      to you? Share your honest perspective on belonging.
+    applies_to: [participant]
+    value_type: security
+
+  healthy:
+    description: "Maintaining good physical and mental health"
+    type: judged_numeric
+    min: 0
+    max: 10
+    prompt_template: |
+      {agent_name}, is maintaining good physical and mental health a
+      priority for you? Share your honest perspective on health.
+    applies_to: [participant]
+    value_type: security
+
+# ── Aggregations ──
+aggregations:
+  - name: value_type_means
+    description: "Mean score per Schwartz value type per agent"
+    method: group_mean
+    group_by: value_type
+
+  - name: value_drift
+    description: "Change in value scores between baseline and perturbed conditions"
+    method: delta
+    baseline_condition: no_perturbation

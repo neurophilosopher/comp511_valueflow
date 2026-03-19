@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 from omegaconf import DictConfig
 
-from src.evaluation.probes import Probe, create_probe
+from src.evaluation.probes import JudgedNumericProbe, Probe, create_probe
 
 if TYPE_CHECKING:
     from concordia.typing import entity as entity_lib
@@ -54,6 +54,10 @@ class ProbeRunner:
     def _build_probes(self, config: DictConfig) -> list[Probe]:
         """Build probe instances from configuration.
 
+        For ``judged_numeric`` probes the top-level ``judge.system_prompt``
+        is injected into each probe's config under the private key
+        ``_judge_system_prompt`` so the probe can use it at query time.
+
         Args:
             config: Evaluation configuration with 'metrics' section.
 
@@ -62,6 +66,9 @@ class ProbeRunner:
         """
         probes = []
         metrics = config.get("metrics", {})
+
+        # Top-level judge config (used by JudgedNumericProbe)
+        judge_system_prompt: str = str(config.get("judge", {}).get("system_prompt", ""))
 
         for name, metric_config in metrics.items():
             try:
@@ -76,6 +83,10 @@ class ProbeRunner:
                     logger.debug(f"Skipping '{name}': no prompt_template (aggregate metric)")
                     continue
 
+                # Inject judge system prompt for judged_numeric probes
+                if metric_dict.get("type") == "judged_numeric":
+                    metric_dict["_judge_system_prompt"] = judge_system_prompt
+
                 probe = create_probe(name, metric_dict)
                 probes.append(probe)
                 logger.debug(
@@ -86,6 +97,22 @@ class ProbeRunner:
 
         logger.info(f"Initialized {len(probes)} probes")
         return probes
+
+    def set_judge_model(self, model: Any) -> None:
+        """Wire a language model into all JudgedNumericProbe instances.
+
+        Call this after the simulation models have been created.
+
+        Args:
+            model: LanguageModel instance to use as judge.
+        """
+        wired = 0
+        for probe in self.probes:
+            if isinstance(probe, JudgedNumericProbe):
+                probe.judge_model = model
+                wired += 1
+        if wired:
+            logger.info("Wired judge model into %d JudgedNumericProbe(s)", wired)
 
     def set_role_mapping(self, role_mapping: dict[str, str]) -> None:
         """Update the role mapping.

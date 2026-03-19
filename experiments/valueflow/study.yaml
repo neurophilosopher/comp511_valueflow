@@ -1,0 +1,337 @@
+# ValueFlow Study Definition
+#
+# Reproduces the main results from:
+#   "ValueFlow: Measuring the Propagation of Value Perturbations in
+#    Multi-Agent LLM Systems" (arxiv 2602.08567)
+#
+# Single source of truth: defines the scientific hierarchy AND maps each
+# condition to concrete simulation output and eval paths.
+#
+# Run pipeline:
+#   1. Simulate:  uv run python scripts/run_valueflow.py --topologies chain ring star fully_connected
+#   2. Metrics:   computed automatically by run_valueflow.py -> experiments/valueflow/results/
+#   3. Organize:  uv run python scripts/organize_experiments.py experiments/valueflow/study.yaml
+#   4. Notebook:  notebooks/study_valueflow.ipynb
+#
+# Path conventions:
+#   source  -> Hydra output dir from run_experiment.py (e.g. outputs/valueflow_experiment/{timestamp})
+#   eval    -> valueflow_metrics.json produced by scripts/run_valueflow.py
+#              (contains beta_susceptibility, system_susceptibility, target_value_ss)
+#   Placeholder value TBD means the run has not yet been executed.
+
+study:
+  name: valueflow
+  question: >-
+    How do value perturbations propagate through multi-agent LLM systems,
+    and how are susceptibility and propagation dynamics shaped by
+    interaction topology, LLM backbone, perturbed value type, and
+    perturbation location?
+  scenarios:
+    - valueflow
+
+  # Shared baseline run (no perturbation) — referenced by all perturbed hypotheses.
+  # Run with: scenario.perturbation.enabled=false
+  baseline:
+    source: outputs/valueflow_experiment/baseline/TBD
+    eval: experiments/valueflow/results/baseline/probe_results.jsonl
+
+  # Hydra overrides common to all runs
+  base_overrides:
+    scenario: valueflow
+    evaluation: valueflow
+    environment: valueflow
+    simulation.execution.max_steps: 20
+    scenario.interaction.num_rounds: 3
+    model: gpt4o
+
+hypotheses:
+
+  # ── H1: Topology affects propagation ────────────────────────────────────────
+  h1_topology:
+    statement: >-
+      Interaction topology significantly determines how a value perturbation
+      propagates. Fully-connected networks expose all agents to the perturbed
+      node, so SS should be highest there; chains attenuate influence with
+      topological distance.
+    independent_variable: topology
+    prediction: >-
+      SS(fully_connected) > SS(star) > SS(ring) > SS(chain)
+    status: planned
+    paper_figure: Fig. 3 — bar chart of SS by topology
+    conditions:
+      chain:
+        overrides:
+          scenario.topology.type: chain
+          scenario.perturbation.target_value: social_power
+          scenario.perturbation.target_value_type: power
+          scenario.perturbation.perturbed_agent_index: 0
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/topology=chain/TBD
+            eval: experiments/valueflow/results/chain__social_power__agent0/valueflow_metrics.json
+
+      ring:
+        overrides:
+          scenario.topology.type: ring
+          scenario.perturbation.target_value: social_power
+          scenario.perturbation.target_value_type: power
+          scenario.perturbation.perturbed_agent_index: 0
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/topology=ring/TBD
+            eval: experiments/valueflow/results/ring__social_power__agent0/valueflow_metrics.json
+
+      star:
+        overrides:
+          scenario.topology.type: star
+          scenario.perturbation.target_value: social_power
+          scenario.perturbation.target_value_type: power
+          scenario.perturbation.perturbed_agent_index: 0
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/topology=star/TBD
+            eval: experiments/valueflow/results/star__social_power__agent0/valueflow_metrics.json
+
+      fully_connected:
+        overrides:
+          scenario.topology.type: fully_connected
+          scenario.perturbation.target_value: social_power
+          scenario.perturbation.target_value_type: power
+          scenario.perturbation.perturbed_agent_index: 0
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/topology=fully_connected/TBD
+            eval: experiments/valueflow/results/fully_connected__social_power__agent0/valueflow_metrics.json
+
+  # ── H2: Model backbone affects susceptibility ────────────────────────────────
+  h2_model_backbone:
+    statement: >-
+      Different LLM backbones exhibit systematically different β-susceptibility
+      profiles — some models are more easily nudged toward the perturbed value
+      than others.
+    independent_variable: model
+    prediction: >-
+      Models differ significantly in mean SS, with larger/RLHF-tuned models
+      showing lower susceptibility due to stronger value anchoring.
+    status: planned
+    paper_figure: Fig. 5 — grouped bar chart of SS by model and value type
+    conditions:
+      gpt4o-mini:
+        overrides:
+          model: gpt4
+          scenario.topology.type: chain
+          scenario.perturbation.target_value: social_power
+          scenario.perturbation.target_value_type: power
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/model=gpt4o-mini/TBD
+            eval: experiments/valueflow/results/model=gpt4o-mini__chain__social_power__agent0/valueflow_metrics.json
+
+      gpt4o:
+        overrides:
+          model: gpt4o
+          scenario.topology.type: chain
+          scenario.perturbation.target_value: social_power
+          scenario.perturbation.target_value_type: power
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/model=gpt4o/TBD
+            eval: experiments/valueflow/results/model=gpt4o__chain__social_power__agent0/valueflow_metrics.json
+
+      claude:
+        overrides:
+          model: claude
+          scenario.topology.type: chain
+          scenario.perturbation.target_value: social_power
+          scenario.perturbation.target_value_type: power
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/model=claude/TBD
+            eval: experiments/valueflow/results/model=claude__chain__social_power__agent0/valueflow_metrics.json
+
+  # ── H3: Value type affects propagation ──────────────────────────────────────
+  h3_value_type:
+    statement: >-
+      Schwartz value types differ in how readily they propagate. Power and
+      achievement values (self-enhancing) spread more easily through a network
+      than tradition or conformity values (conservation).
+    independent_variable: target_value
+    prediction: >-
+      SS(power) > SS(achievement) > SS(benevolence) > SS(tradition) ≈ SS(security)
+    status: planned
+    paper_figure: Fig. 4 — SS by value type (bar chart grouped by Schwartz category)
+    conditions:
+      power__social_power:
+        overrides:
+          scenario.topology.type: chain
+          scenario.perturbation.target_value: social_power
+          scenario.perturbation.target_value_type: power
+          scenario.perturbation.perturbed_agent_index: 0
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/value=social_power/TBD
+            eval: experiments/valueflow/results/chain__social_power__agent0/valueflow_metrics.json
+
+      achievement__ambitious:
+        overrides:
+          scenario.topology.type: chain
+          scenario.perturbation.target_value: ambitious
+          scenario.perturbation.target_value_type: achievement
+          scenario.perturbation.perturbed_agent_index: 0
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/value=ambitious/TBD
+            eval: experiments/valueflow/results/chain__ambitious__agent0/valueflow_metrics.json
+
+      universalism__equality:
+        overrides:
+          scenario.topology.type: chain
+          scenario.perturbation.target_value: equality
+          scenario.perturbation.target_value_type: universalism
+          scenario.perturbation.perturbed_agent_index: 0
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/value=equality/TBD
+            eval: experiments/valueflow/results/chain__equality__agent0/valueflow_metrics.json
+
+      benevolence__helpful:
+        overrides:
+          scenario.topology.type: chain
+          scenario.perturbation.target_value: helpful
+          scenario.perturbation.target_value_type: benevolence
+          scenario.perturbation.perturbed_agent_index: 0
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/value=helpful/TBD
+            eval: experiments/valueflow/results/chain__helpful__agent0/valueflow_metrics.json
+
+      tradition__respect_for_tradition:
+        overrides:
+          scenario.topology.type: chain
+          scenario.perturbation.target_value: respect_for_tradition
+          scenario.perturbation.target_value_type: tradition
+          scenario.perturbation.perturbed_agent_index: 0
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/value=respect_for_tradition/TBD
+            eval: experiments/valueflow/results/chain__respect_for_tradition__agent0/valueflow_metrics.json
+
+      security__social_order:
+        overrides:
+          scenario.topology.type: chain
+          scenario.perturbation.target_value: social_order
+          scenario.perturbation.target_value_type: security
+          scenario.perturbation.perturbed_agent_index: 0
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/value=social_order/TBD
+            eval: experiments/valueflow/results/chain__social_order__agent0/valueflow_metrics.json
+
+  # ── H4: Perturbation location in chain ──────────────────────────────────────
+  h4_perturbation_location:
+    statement: >-
+      In a chain topology, perturbing an upstream agent (index 0) maximises
+      propagation reach; perturbing a downstream agent limits impact to a
+      smaller reachable subgraph, so SS decreases monotonically with position.
+    independent_variable: perturbed_agent_index
+    prediction: >-
+      SS(index=0) > SS(index=2) > SS(index=4) for a 5-agent chain.
+    status: planned
+    paper_figure: Fig. 6 — bar chart of SS by perturbation position
+    conditions:
+      head:
+        overrides:
+          scenario.topology.type: chain
+          scenario.perturbation.target_value: social_power
+          scenario.perturbation.target_value_type: power
+          scenario.perturbation.perturbed_agent_index: 0
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/location=head/TBD
+            eval: experiments/valueflow/results/chain__social_power__agent0/valueflow_metrics.json
+
+      middle:
+        overrides:
+          scenario.topology.type: chain
+          scenario.perturbation.target_value: social_power
+          scenario.perturbation.target_value_type: power
+          scenario.perturbation.perturbed_agent_index: 2
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/location=middle/TBD
+            eval: experiments/valueflow/results/chain__social_power__agent2/valueflow_metrics.json
+
+      tail:
+        overrides:
+          scenario.topology.type: chain
+          scenario.perturbation.target_value: social_power
+          scenario.perturbation.target_value_type: power
+          scenario.perturbation.perturbed_agent_index: 4
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/location=tail/TBD
+            eval: experiments/valueflow/results/chain__social_power__agent4/valueflow_metrics.json
+
+  # ── H5: Baseline stability ───────────────────────────────────────────────────
+  h5_baseline_stability:
+    statement: >-
+      Without perturbation, agent value scores remain stable across interaction
+      rounds — there is no systematic drift attributable to the discussion itself.
+    independent_variable: perturbation_enabled
+    prediction: >-
+      Round-0 and final-round scores are statistically indistinguishable
+      (|Δ| < 0.5 across all agents and values).
+    status: planned
+    paper_figure: Fig. 2 — stability check; score timeseries without perturbation
+    conditions:
+      no_perturbation:
+        overrides:
+          scenario.perturbation.enabled: false
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/baseline/TBD
+            eval: experiments/valueflow/results/baseline/probe_results.jsonl
+
+      with_perturbation:
+        overrides:
+          scenario.perturbation.enabled: true
+          scenario.perturbation.target_value: social_power
+          scenario.perturbation.target_value_type: power
+          scenario.perturbation.perturbed_agent_index: 0
+        runs:
+          - scenario: valueflow
+            source: outputs/valueflow_experiment/topology=chain/TBD
+            eval: experiments/valueflow/results/chain__social_power__agent0/valueflow_metrics.json
+
+# ── Eval format note ────────────────────────────────────────────────────────
+# ValueFlow eval.json (valueflow_metrics.json) contains:
+#   target_agent:         str
+#   target_value:         str
+#   beta_susceptibility:  dict[value_name -> dict[agent -> float]]
+#   system_susceptibility: dict[value_name -> float]
+#   target_value_ss:      float   <- primary headline metric
+#   beta_timeseries:      dict[value_name -> dict[agent -> list[float]]]
+#
+# This differs from style_diversity eval.json (which has agents/aggregated/summary).
+# The organize_experiments.py script should read target_value_ss as the primary
+# scalar metric for cross-condition comparison.
+
+# ── Analysis ────────────────────────────────────────────────────────────────
+analysis:
+  primary_metric: target_value_ss
+  secondary_metrics:
+    - beta_susceptibility
+    - system_susceptibility
+    - beta_timeseries
+  statistical_tests:
+    - paired_t_test    # baseline vs. perturbed per agent, per value
+    - one_way_anova    # SS across topologies (H1)
+    - one_way_anova    # SS across value types (H3)
+  visualization:
+    - bar_chart_ss_by_topology        # plot_ss_by_topology()
+    - heatmap_beta_by_value_and_agent # plot_beta_heatmap()
+    - line_plot_beta_timeseries       # plot_beta_timeseries()
+    - bar_chart_ss_by_value_type      # plot_ss_by_value_type()
+    - bar_chart_location_effect       # plot_location_effect()
+  comparison: experiments/valueflow/results/summary/cross_condition_comparison.json
+  notebook: notebooks/study_valueflow.ipynb

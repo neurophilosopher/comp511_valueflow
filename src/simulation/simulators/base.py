@@ -371,6 +371,19 @@ class BaseSimulator(ABC):
             from src.environments.social_media.engine import SocialMediaEngine
 
             return SocialMediaEngine()
+        elif engine_type == "valueflow":
+            from scenarios.valueflow.engine import ValueFlowEngine
+
+            topology_config = OmegaConf.to_container(
+                self._config.scenario.get("topology", {}), resolve=True
+            )
+            interaction_config = OmegaConf.to_container(
+                self._config.scenario.get("interaction", {}), resolve=True
+            )
+            return ValueFlowEngine(
+                topology_config=topology_config or {},
+                interaction_config=interaction_config or {},
+            )
         elif engine_type == "simultaneous":
             from concordia.environment.engines import simultaneous
 

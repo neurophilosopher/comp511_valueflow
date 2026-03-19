@@ -34,7 +34,7 @@ import json
 import sys
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import hydra
 from dotenv import load_dotenv
@@ -43,6 +43,9 @@ from omegaconf import DictConfig, OmegaConf
 # Add project root to path for imports
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+if TYPE_CHECKING:
+    from src.simulation.simulators.base import BaseSimulator
 
 from src.simulation.simulators.multi_model import MultiModelSimulator
 from src.utils.config_helpers import get_output_paths
@@ -104,6 +107,16 @@ def print_config_summary(config: DictConfig) -> None:
     print("=" * 60 + "\n")
 
 
+def _create_simulator(config: DictConfig) -> BaseSimulator:
+    """Return the appropriate simulator for the given scenario config."""
+    scenario_name = config.scenario.get("name", "")
+    if scenario_name == "valueflow":
+        from scenarios.valueflow.simulator import ValueFlowSimulator
+
+        return ValueFlowSimulator(config)
+    return MultiModelSimulator(config)
+
+
 @hydra.main(
     version_base=None,
     config_path="config",
@@ -136,9 +149,9 @@ def main(config: DictConfig) -> float | None:
     # Log full configuration at debug level
     logger.debug(f"Full configuration:\n{OmegaConf.to_yaml(config)}")
 
-    # Create simulator
+    # Create simulator — scenario-specific subclass when available
     logger.info("Initializing simulator...")
-    simulator = MultiModelSimulator(config)
+    simulator = _create_simulator(config)
 
     # Get logging config
     sim_config = config.simulation

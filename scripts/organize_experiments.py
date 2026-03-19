@@ -196,7 +196,7 @@ def organize_study(data: dict[str, Any], *, dry_run: bool = False) -> Path:
                 metadata["condition"] = cond_name
                 metadata["hypothesis"] = hyp_id
                 if dry_run:
-                    print(f"        [write] config.yaml")
+                    print("        [write] config.yaml")
                 else:
                     with config_path.open("w") as f:
                         yaml.dump(metadata, f, default_flow_style=False, sort_keys=False)
@@ -235,7 +235,7 @@ def organize_study(data: dict[str, Any], *, dry_run: bool = False) -> Path:
             analysis_dest = hyp_dir / "analysis.json"
             if analysis_full.is_file():
                 if dry_run:
-                    print(f"    [copy] analysis.json")
+                    print("    [copy] analysis.json")
                 else:
                     shutil.copy2(analysis_full, analysis_dest)
             else:

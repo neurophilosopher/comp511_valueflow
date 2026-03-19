@@ -1,0 +1,8 @@
+# ValueFlow Environment Configuration
+# DAG topology-aware environment for value perturbation propagation experiments
+
+name: valueflow
+description: "DAG topology environment for ValueFlow experiments"
+
+# Engine type — selects ValueFlowEngine
+engine: valueflow

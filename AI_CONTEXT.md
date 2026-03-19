@@ -91,7 +91,7 @@ uv run cz c
 uv run pre-commit run --all-files && uv run pytest
 ```
 
-**Test suite**: 241 tests (run `uv run pytest` to verify)
+**Test suite**: ~320 tests (run `uv run pytest` to verify; includes 79 ValueFlow tests in `tests/test_scenarios/test_valueflow/`)
 
 **Coverage threshold**: 70% minimum (configured in pyproject.toml)
 
@@ -110,9 +110,22 @@ prefabs:
 - New scenarios: Create `config/scenario/name.yaml` + optional `scenarios/name/` directory with agents, game_masters, knowledge, events modules
 - New prefabs: Implement `concordia.typing.prefab.Prefab` interface
 - Knowledge builders: Define `builders.knowledge.module` and `builders.knowledge.function` in scenario config
-- New engines: Set `environment.engine` to `sequential` (default), `simultaneous`, or `social_media`
+- New engines: Set `environment.engine` to `sequential` (default), `simultaneous`, `social_media`, or `valueflow`
 
-**Data Flow**: `run_experiment.py` → `MultiModelSimulator` → `BaseSimulator.build_config()` → `Simulation.play()`
+**Data Flow**: `run_experiment.py` → `_create_simulator()` factory → `MultiModelSimulator` (or scenario-specific subclass) → `BaseSimulator.build_config()` → `Simulation.play()`
+
+**Simulator subclassing**: For scenario-specific setup (e.g. perturbation injection, judge-model wiring), create `scenarios/<name>/simulator.py` with a subclass of `MultiModelSimulator`. Register it in the `_create_simulator()` factory in `run_experiment.py` by matching on `config.scenario.name`.
+
+**ValueFlow Scenario** (`scenarios/valueflow/`):
+- `agents.py`: `ValueFlowAgent` prefab with neutral balanced value orientation
+- `game_masters.py`: `ValueFlowGameMaster` with `build_topology_graph()` (chain/ring/star/fully_connected/custom) and `build_perturbation_persona()`
+- `engine.py`: `ValueFlowEngine` — DAG-topology-filtered parallel observations, `num_rounds` rounds, checkpoint callback after each round
+- `simulator.py`: `ValueFlowSimulator(MultiModelSimulator)` — overrides `build_instances()` to inject perturbed persona, overrides `setup()` to wire judge model into probes
+- `metrics.py`: `compute_beta_susceptibility()`, `compute_system_susceptibility()`, `compute_all_metrics()`, timeseries, cross-topology comparison, JSON export
+- `plotting.py`: `plot_ss_by_topology()`, `plot_beta_heatmap()`, `plot_beta_timeseries()`, `plot_ss_by_value_type()`, `plot_location_effect()`, `plot_summary_grid()`
+- `data/schwartz_values.yaml`: 56-value Schwartz dataset with questions and polarity
+- Activated by `environment: valueflow` + `scenario: valueflow`
+- Sweep runner: `uv run python scripts/run_valueflow.py --topologies chain ring star fully_connected`
 
 **Social Media Environment** (`src/environments/social_media/`):
 - `app.py`: `Post` dataclass + `SocialMediaApp` (in-memory platform: post, reply, like, boost, follow)
@@ -171,6 +184,7 @@ The evaluation system queries agents at checkpoints without affecting their memo
 - `CategoricalProbe`: Choose from predefined categories
 - `NumericProbe`: Rating within min/max range
 - `BooleanProbe`: Yes/no questions
+- `JudgedNumericProbe`: Two-step — free-form agent response, then a judge LLM scores 0–10; falls back to parsing if no judge model. Requires `evaluation.judge.system_prompt` in eval config and wiring via `ProbeRunner.set_judge_model(model)`.
 
 **Example metric config:**
 ```yaml

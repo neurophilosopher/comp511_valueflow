@@ -1,0 +1,8 @@
+# GPT-4o Model Configuration
+
+name: gpt4o
+_target_: src.models.openai_model.OpenAILanguageModel
+model_name: gpt-4o
+api_key: ${oc.env:OPENAI_API_KEY,}
+temperature: 0.7
+max_tokens: 1024
