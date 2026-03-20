@@ -650,7 +650,7 @@ def build_cytoscape_elements(
     chain_seed_id: int | None,
 ) -> list[dict[str, Any]]:
     """Build cytoscape node/edge elements filtered to the given step."""
-    assert SIM is not None
+    assert SIM is not None  # nosec B101
     sim = SIM
 
     # Posts up to this step
@@ -770,7 +770,7 @@ def create_app(sim: SimData) -> Dash:
         Input("step-slider", "value"),
     )
     def update_step_activity(step: int) -> tuple[str, list[Any]]:
-        assert SIM is not None
+        assert SIM is not None  # nosec B101
         actions = SIM.step_actions.get(step, [])
         header = f"Step {step} Activity ({len(actions)} actions)"
 
@@ -811,7 +811,7 @@ def create_app(sim: SimData) -> Dash:
         Input("step-slider", "value"),
     )
     def update_charts(step: int) -> tuple[go.Figure, go.Figure]:
-        assert SIM is not None
+        assert SIM is not None  # nosec B101
 
         # Posts per step bar chart
         steps_range = list(range(0, SIM.max_step + 1))
@@ -884,7 +884,7 @@ def create_app(sim: SimData) -> Dash:
     def update_chain_stats(chain_value: str) -> str | html.Div:
         if chain_value == "none":
             return ""
-        assert SIM is not None
+        assert SIM is not None  # nosec B101
         seed_id = int(chain_value)
         for chain in SIM.chains:
             if chain.seed_post_id == seed_id:
@@ -910,7 +910,7 @@ def create_app(sim: SimData) -> Dash:
         node_data: dict[str, Any] | None,
         edge_data: dict[str, Any] | None,
     ) -> Any:
-        assert SIM is not None
+        assert SIM is not None  # nosec B101
         triggered = callback_context.triggered
         if not triggered:
             return no_update
@@ -943,7 +943,7 @@ def create_app(sim: SimData) -> Dash:
         State("step-slider", "value"),
     )
     def advance_step(n_intervals: int, current_step: int) -> int:
-        assert SIM is not None
+        assert SIM is not None  # nosec B101
         if current_step >= SIM.max_step:
             return 0  # wrap around
         return current_step + 1
@@ -970,7 +970,7 @@ def _action_icon(action_type: str) -> str:
 
 
 def _render_agent_profile(agent_name: str) -> html.Div:
-    assert SIM is not None
+    assert SIM is not None  # nosec B101
     sim = SIM
 
     posts = [p for p in sim.posts if p.author == agent_name]
@@ -1012,7 +1012,7 @@ def _render_agent_profile(agent_name: str) -> html.Div:
 
 
 def _render_post_card(post: Post) -> html.Div:
-    assert SIM is not None
+    assert SIM is not None  # nosec B101
     likes = SIM.app.get_like_count(post.id)
     replies = SIM.app.get_reply_count(post.id)
     boosts = SIM.app.get_boost_count(post.id)
@@ -1054,7 +1054,7 @@ def _render_post_card(post: Post) -> html.Div:
 
 
 def _render_edge_detail(edge_data: dict[str, Any]) -> html.Div:
-    assert SIM is not None
+    assert SIM is not None  # nosec B101
     sim = SIM
 
     edge_type = edge_data.get("edge_type", "?")

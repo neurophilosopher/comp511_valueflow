@@ -29,7 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import subprocess
+import subprocess  # nosec B404
 import sys
 from pathlib import Path
 
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_TOPOLOGIES = ["chain"]
 DEFAULT_VALUES = ["social_power"]
 DEFAULT_LOCATIONS = [0]
-DEFAULT_MODEL = "gpt4"
+DEFAULT_MODEL = "gpt4o"
 DEFAULT_ROUNDS = 3
 DEFAULT_MAX_STEPS = 20
 
@@ -148,7 +148,7 @@ def run_experiment(cmd: list[str], dry_run: bool = False) -> str | None:
     print(f"{'='*60}\n")
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             cmd,
             capture_output=True,
             text=True,
@@ -263,6 +263,16 @@ def main() -> None:
         default="experiments/valueflow/results",
         help="Base output directory for metrics",
     )
+    parser.add_argument(
+        "--baseline-dir",
+        default=None,
+        help=(
+            "Path to an existing baseline run output directory. "
+            "If provided, the baseline simulation is skipped and this directory "
+            "is used directly. Useful when running multiple hypothesis sweeps "
+            "that share the same baseline."
+        ),
+    )
 
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
@@ -277,22 +287,31 @@ def main() -> None:
     print(f"Rounds: {args.rounds}")
     print(f"Max steps: {args.max_steps}")
     print(f"Output: {args.output_dir}")
+    if args.baseline_dir:
+        print(f"Baseline: {args.baseline_dir} (reusing existing)")
     print("=" * 60)
 
     # Count total experiments
-    # baseline (1) + perturbed (topologies x values x locations)
+    # baseline (1 unless --baseline-dir supplied) + perturbed (topologies x values x locations)
     n_perturbed = len(args.topologies) * len(args.values) * len(args.locations)
-    print(f"\nTotal runs: 1 baseline + {n_perturbed} perturbed = {1 + n_perturbed}")
-
-    # Step 1: Run baseline (no perturbation)
-    print("\n▶ Step 1: Running baseline (no perturbation)...")
-    baseline_cmd = build_hydra_command(
-        model=args.model,
-        perturbation_enabled=False,
-        num_rounds=args.rounds,
-        max_steps=args.max_steps,
+    n_baseline = 0 if args.baseline_dir else 1
+    print(
+        f"\nTotal runs: {n_baseline} baseline + {n_perturbed} perturbed = {n_baseline + n_perturbed}"
     )
-    baseline_dir = run_experiment(baseline_cmd, dry_run=args.dry_run)
+
+    # Step 1: Run baseline (no perturbation), or reuse supplied dir
+    if args.baseline_dir:
+        print(f"\n▶ Step 1: Reusing existing baseline at {args.baseline_dir}")
+        baseline_dir: str | None = args.baseline_dir
+    else:
+        print("\n▶ Step 1: Running baseline (no perturbation)...")
+        baseline_cmd = build_hydra_command(
+            model=args.model,
+            perturbation_enabled=False,
+            num_rounds=args.rounds,
+            max_steps=args.max_steps,
+        )
+        baseline_dir = run_experiment(baseline_cmd, dry_run=args.dry_run)
 
     # Step 2: Run perturbed conditions
     print("\n▶ Step 2: Running perturbed conditions...")

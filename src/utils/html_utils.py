@@ -83,14 +83,14 @@ HTML_TAIL = """
 class HTMLWriter:
     """Class to write to HTML."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.html = ""
 
-    def write(self, text):
+    def write(self, text: str) -> None:
         """Adds text to the HTML."""
         self.html += text
 
-    def render(self):
+    def render(self) -> str:
         """Returns the HTML."""
         return self.html
 
@@ -98,15 +98,15 @@ class HTMLWriter:
 class PythonObjectToHTMLConverter:
     """Class to convert python objects to HTML."""
 
-    def __init__(self, python_object):
+    def __init__(self, python_object: object) -> None:
         self.python_object = python_object
         self.html_writer = HTMLWriter()
 
-    def convert(self):
+    def convert(self) -> str:
         self._convert_python_object(self.python_object)
         return self.html_writer.render()
 
-    def _convert_python_object(self, python_object):
+    def _convert_python_object(self, python_object: object) -> None:
         """Converts a python object to HTML."""
         if isinstance(python_object, str):
             self.html_writer.write(html.escape(python_object).replace("\n", "<br />"))
@@ -119,21 +119,21 @@ class PythonObjectToHTMLConverter:
         elif isinstance(python_object, dict):
             self.html_writer.write("<details>")
 
-            if "date" in python_object.keys():
+            if "date" in python_object:
                 self.html_writer.write("<summary>")
                 self._convert_python_object(python_object["date"])
-                if "Summary" in python_object.keys():
+                if "Summary" in python_object:
                     self._convert_python_object("  " + python_object["Summary"])
                 self.html_writer.write("</summary>")
-            elif "Summary" in python_object.keys():
+            elif "Summary" in python_object:
                 self.html_writer.write("<summary>")
                 self._convert_python_object("  " + python_object["Summary"])
                 self.html_writer.write("</summary>")
-            elif "Name" in python_object.keys():
+            elif "Name" in python_object:
                 self.html_writer.write("<summary>")
                 self._convert_python_object(python_object["Name"])
                 self.html_writer.write("</summary>")
-            elif "Key" in python_object.keys():
+            elif "Key" in python_object:
                 self.html_writer.write("<summary>")
                 self._convert_python_object(python_object["Key"])
                 self.html_writer.write("</summary>")
@@ -152,11 +152,16 @@ class PythonObjectToHTMLConverter:
             self.html_writer.write(str(python_object))
 
 
-def finalise_html(html_code):
+def finalise_html(html_code: str) -> str:
     return HTML_HEAD + html_code + HTML_TAIL
 
 
-def combine_html_pages(html_pages, tab_names, summary="", title="Experiment logs"):
+def combine_html_pages(
+    html_pages: list[str],
+    tab_names: list[str],
+    summary: str = "",
+    title: str = "Experiment logs",
+) -> str:
     """Combines multiple HTML pages into a single HTML page with tabs."""
     html_code = ""
     html_code += f"""<h2>{title}</h2>

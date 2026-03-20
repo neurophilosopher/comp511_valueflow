@@ -18,7 +18,7 @@ import json
 import shutil
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -34,7 +34,7 @@ EXPERIMENTS_DIR = PROJECT_ROOT / "experiments"
 def load_study_definition(path: Path) -> dict[str, Any]:
     """Parse and return the study definition YAML."""
     with path.open() as f:
-        data = yaml.safe_load(f)
+        data = cast(dict[str, Any], yaml.safe_load(f))
     # Basic structural validation
     for key in ("study", "hypotheses"):
         if key not in data:
@@ -125,7 +125,7 @@ def organize_study(data: dict[str, Any], *, dry_run: bool = False) -> Path:
     """
     study = data["study"]
     study_name = study["name"]
-    study_dir = EXPERIMENTS_DIR / study_name
+    study_dir: Path = EXPERIMENTS_DIR / study_name
 
     if not dry_run:
         study_dir.mkdir(parents=True, exist_ok=True)
