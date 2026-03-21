@@ -180,14 +180,24 @@ class ValueFlowGameMaster(prefab_lib.Prefab):
             f"rounds={interaction_config.get('num_rounds')}"
         )
 
-        # Use Concordia's built-in generic game master as the base entity
-        from concordia.prefabs import game_master as gm_prefabs
+        player_names = [e.name for e in self.entities]
 
-        base_gm = gm_prefabs.generic__GameMaster(
-            params={
-                "name": name,
-                "acting_order": "fixed",
-            }
+        obs_to_memory_key = "ObservationToMemory"
+        components[obs_to_memory_key] = agent_components.observation.ObservationToMemory()
+
+        observation_key = agent_components.observation.DEFAULT_OBSERVATION_COMPONENT_KEY
+        components[observation_key] = agent_components.observation.LastNObservations(
+            history_length=100,
         )
 
-        return base_gm.build(model, memory_bank)
+        act_component = gm_components.switch_act.SwitchAct(
+            model=model,
+            entity_names=player_names,
+            component_order=list(components.keys()),
+        )
+
+        return entity_agent_with_logging.EntityAgentWithLogging(
+            agent_name=name,
+            act_component=act_component,
+            context_components=components,
+        )
