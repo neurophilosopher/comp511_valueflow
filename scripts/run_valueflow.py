@@ -81,6 +81,7 @@ def build_hydra_command(
         "run_experiment.py",
         f"scenario={scenario}",
         f"evaluation={evaluation}",
+        f"environment=valueflow",
         f"model={model}",
         f"scenario.topology.type={topology}",
         f"scenario.perturbation.enabled={str(perturbation_enabled).lower()}",
