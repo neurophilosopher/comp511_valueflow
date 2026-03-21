@@ -15,6 +15,7 @@ from typing import Any
 
 from concordia.agents import entity_agent_with_logging
 from concordia.associative_memory import basic_associative_memory
+from concordia.components import agent as agent_components
 from concordia.components import game_master as gm_components
 from concordia.language_model import language_model
 from concordia.typing import entity as entity_lib
@@ -158,8 +159,8 @@ class ValueFlowGameMaster(prefab_lib.Prefab):
         # Build basic GM components
         components: dict[str, Any] = {}
 
-        memory_key = gm_components.memory.DEFAULT_MEMORY_COMPONENT_KEY
-        components[memory_key] = gm_components.memory.AssociativeMemory(
+        memory_key = agent_components.memory.DEFAULT_MEMORY_COMPONENT_KEY
+        components[memory_key] = agent_components.memory.AssociativeMemory(
             memory_bank=memory_bank,
         )
 

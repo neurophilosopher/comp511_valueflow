@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import subprocess  # nosec B404
 import sys
 from pathlib import Path
@@ -76,7 +77,7 @@ def build_hydra_command(
         List of command-line arguments.
     """
     cmd = [
-        sys.executable,
+        os.path.expanduser(sys.executable),
         "run_experiment.py",
         f"scenario={scenario}",
         f"evaluation={evaluation}",
