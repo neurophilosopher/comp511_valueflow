@@ -209,6 +209,12 @@ class NumericProbe(Probe):
         for key, value in context.items():
             prompt = prompt.replace("{" + key + "}", str(value))
 
+        # Append explicit numeric rating instruction
+        prompt += (
+            f"\n\nPlease rate your endorsement on a scale of {self.min_value} to"
+            f" {self.max_value}. Respond with ONLY a single integer on the last line."
+        )
+
         return prompt
 
     def parse_response(self, response: str) -> int | float | None:
