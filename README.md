@@ -8,12 +8,13 @@ A flexible multi-agent simulation framework built on [Concordia v2](https://gith
 - **Multi-Model Support**: GPT-4o, GPT-4o-mini, Claude, Ollama with per-agent model assignment
 - **Dynamic Scenarios**: Switch scenarios via config (marketplace, election, misinformation, ai_conference, debate)
 - **Social Media Environment**: In-memory social media platform with posts, replies, likes, boosts, follows
-- **Evaluation Probes**: Query agents at checkpoints without affecting their memory (categorical, numeric, boolean)
+- **Evaluation Probes**: Query agents at checkpoints without affecting their memory (categorical, numeric, boolean, judged_numeric)
+- **ValueFlow Scenario**: Replication of arxiv 2602.08567 — measures how value perturbations propagate through multi-agent networks via Schwartz Value Survey probes and System Susceptibility metrics
 - **Style Diversity Evaluation**: Reference-free metrics (self-BLEU, lexical diversity, content evolution, etc.) for diagnosing repetitive agent behavior
 - **Experiment Organization**: Structured study/hypothesis/condition tree for reproducible experiments (see `experiments/study_schema.md`)
 - **Modular Architecture**: Engines, simulators, and components can be mixed and matched
 - **Extensible Design**: Easy to add new scenarios, agents, game masters, and components
-- **Full Dev Infrastructure**: Pre-commit hooks, CI/CD, type checking, 241 tests
+- **Full Dev Infrastructure**: Pre-commit hooks, CI/CD, type checking, ~320 tests
 
 ## Quick Start
 
@@ -86,6 +87,7 @@ uv run python run_experiment.py --cfg job
 | `misinformation` | social_media | Information spread and manipulation on a social media platform |
 | `ai_conference` | social_media | Two echo chambers (conference attendees vs. protesters) collide on social media; studies groupthink dynamics |
 | `debate` | sequential | Formal debate with debaters, moderator, and judges |
+| `valueflow` | valueflow | Value perturbation propagation across agent networks (arxiv 2602.08567); measures β-susceptibility and System Susceptibility via Schwartz Value Survey probes |
 
 Social media scenarios auto-select the `social_media` environment config via a Hydra defaults override, which activates the `SocialMediaEngine` for parallel agent execution with feed-based interaction.
 
@@ -108,17 +110,20 @@ simulator/
 │   ├── environment/               # Environment settings
 │   │   ├── generic_world.yaml
 │   │   ├── game_theoretic.yaml
-│   │   └── social_media.yaml
+│   │   ├── social_media.yaml
+│   │   └── valueflow.yaml         # ValueFlowEngine settings
 │   ├── scenario/                  # Scenario definitions
 │   │   ├── marketplace.yaml
 │   │   ├── election.yaml
 │   │   ├── misinformation.yaml
 │   │   ├── ai_conference.yaml
-│   │   └── debate.yaml
+│   │   ├── debate.yaml
+│   │   └── valueflow.yaml         # Topology, perturbation, interaction config
 │   └── evaluation/                # Evaluation metrics
 │       ├── basic_metrics.yaml
 │       ├── election.yaml
-│       └── marketplace.yaml
+│       ├── marketplace.yaml
+│       └── valueflow.yaml         # 56 Schwartz value probes (JudgedNumericProbe)
 ├── scenarios/                     # Scenario implementations
 │   ├── marketplace/               # Marketplace scenario
 │   │   ├── agents.py              # BuyerAgent, SellerAgent, AuctioneerAgent
@@ -132,9 +137,18 @@ simulator/
 │   ├── misinformation/            # Misinformation scenario (social media)
 │   │   ├── agents.py              # SocialMediaUserAgent prefab
 │   │   └── game_masters.py        # MisinformationGameMaster
-│   └── ai_conference/             # AI Conference groupthink scenario (social media)
-│       ├── agents.py              # AIConferenceAgent prefab
-│       └── game_masters.py        # AIConferenceGameMaster
+│   ├── ai_conference/             # AI Conference groupthink scenario (social media)
+│   │   ├── agents.py              # AIConferenceAgent prefab
+│   │   └── game_masters.py        # AIConferenceGameMaster
+│   └── valueflow/                 # ValueFlow scenario (arxiv 2602.08567)
+│       ├── README.md              # Modification guide and experiment status
+│       ├── agents.py              # ValueFlowAgent prefab (neutral persona)
+│       ├── game_masters.py        # ValueFlowGameMaster + build_topology_graph()
+│       ├── engine.py              # ValueFlowEngine (DAG-filtered, 3 rounds)
+│       ├── simulator.py           # ValueFlowSimulator (perturbation + judge wiring)
+│       ├── metrics.py             # β-susceptibility, SS, JSON export
+│       ├── plotting.py            # All visualization functions
+│       └── data/schwartz_values.yaml  # 56-value Schwartz dataset
 ├── src/                           # Core library
 │   ├── simulation/                # Simulation infrastructure
 │   │   ├── simulation.py          # Core Simulation class
@@ -177,12 +191,15 @@ simulator/
 │   ├── analyze_social_media.py    # CLI analysis tool
 │   ├── explore_dashboard.py       # Interactive Dash explorer
 │   ├── eval_style_diversity.py    # Style diversity evaluation metrics
-│   └── organize_experiments.py    # Organize runs into study/hypothesis tree
+│   ├── organize_experiments.py    # Organize runs into study/hypothesis tree
+│   ├── run_valueflow.py           # ValueFlow sweep runner (baseline + perturbed + metrics)
+│   └── judge_probe_results.py     # Backfill null probe values via LLM judge
 ├── experiments/                   # Organized experiment results (gitignored except study_schema.md)
 │   ├── study_schema.md            # Canonical study structure template
 │   └── {study_name}/              # Per-study results tree
 ├── notebooks/                     # Results notebooks
-│   └── study_style_diversity.ipynb
+│   ├── study_style_diversity.ipynb
+│   └── study_valueflow.ipynb      # ValueFlow H1-H5 analysis + H2 model comparison
 └── tests/                         # Test suite (241 tests)
     ├── conftest.py                # Shared fixtures
     ├── environments/              # Social media environment tests
@@ -274,6 +291,38 @@ uv run python scripts/analyze_social_media.py path/to/checkpoint.json
 uv run python scripts/explore_dashboard.py path/to/checkpoint.json
 ```
 
+## ValueFlow Scenario
+
+Replication of [arxiv 2602.08567](https://arxiv.org/abs/2602.08567). Measures how injecting an amplified value into one agent propagates through a multi-agent network, using the Schwartz Value Survey as probes.
+
+```bash
+# Run a single experiment (chain topology, social_power perturbed at agent 0)
+uv run python run_experiment.py scenario=valueflow evaluation=valueflow environment=valueflow
+
+# Sweep topologies (H1), value types (H3), and perturbation locations (H4)
+uv run python scripts/run_valueflow.py \
+  --topologies chain ring star fully_connected \
+  --values social_power helpful equality \
+  --locations 0 2 4
+
+# Compare models — reuse existing baseline, write to separate results dir
+uv run python scripts/run_valueflow.py \
+  --model gpt4 \
+  --topologies chain ring star fully_connected \
+  --baseline-dir outputs/valueflow_experiment/<timestamp> \
+  --output-dir experiments/valueflow/results_gpt4mini
+
+# Analyze results
+# Open notebooks/study_valueflow.ipynb
+```
+
+Key metrics saved to `experiments/valueflow/results/{condition}/valueflow_metrics.json`:
+- `target_value_ss` — System Susceptibility (headline scalar)
+- `beta_susceptibility` — per-agent, per-value shift (perturbed minus baseline)
+- `beta_timeseries` — β at each interaction round
+
+See `scenarios/valueflow/README.md` for the full modification guide (add values, topologies, models, re-run from scratch).
+
 ## Evaluation
 
 ### Probes
@@ -291,7 +340,7 @@ metrics:
     applies_to: [voter]
 ```
 
-Probe types: `categorical`, `numeric` (min/max range), `boolean` (yes/no).
+Probe types: `categorical`, `numeric` (min/max range), `boolean` (yes/no), `judged_numeric` (free-form agent response scored by a judge LLM).
 
 ### Style Diversity Metrics
 
