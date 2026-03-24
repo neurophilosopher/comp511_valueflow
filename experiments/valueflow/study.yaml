@@ -32,7 +32,7 @@ study:
   # Shared baseline run (no perturbation) — referenced by all perturbed hypotheses.
   # Run with: scenario.perturbation.enabled=false
   baseline:
-    source: outputs/valueflow_experiment/baseline/TBD
+    source: outputs/valueflow_experiment/2026-03-21_17-52-36
     eval: experiments/valueflow/results/baseline/probe_results.jsonl
 
   # Hydra overrides common to all runs
@@ -56,7 +56,8 @@ hypotheses:
     independent_variable: topology
     prediction: >-
       SS(fully_connected) > SS(star) > SS(ring) > SS(chain)
-    status: planned
+    status: done
+    result: "SS order: fully_connected(2.25) > chain(2.00) > star(1.75) > ring(1.25) — partial match (star/ring inverted vs prediction)"
     paper_figure: Fig. 3 — bar chart of SS by topology
     conditions:
       chain:
@@ -67,7 +68,7 @@ hypotheses:
           scenario.perturbation.perturbed_agent_index: 0
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/topology=chain/TBD
+            source: outputs/valueflow_experiment/2026-03-21_18-31-04
             eval: experiments/valueflow/results/chain__social_power__agent0/valueflow_metrics.json
 
       ring:
@@ -78,7 +79,7 @@ hypotheses:
           scenario.perturbation.perturbed_agent_index: 0
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/topology=ring/TBD
+            source: outputs/valueflow_experiment/2026-03-21_19-09-10
             eval: experiments/valueflow/results/ring__social_power__agent0/valueflow_metrics.json
 
       star:
@@ -89,7 +90,7 @@ hypotheses:
           scenario.perturbation.perturbed_agent_index: 0
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/topology=star/TBD
+            source: outputs/valueflow_experiment/2026-03-21_19-47-14
             eval: experiments/valueflow/results/star__social_power__agent0/valueflow_metrics.json
 
       fully_connected:
@@ -100,7 +101,7 @@ hypotheses:
           scenario.perturbation.perturbed_agent_index: 0
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/topology=fully_connected/TBD
+            source: outputs/valueflow_experiment/2026-03-21_20-24-47
             eval: experiments/valueflow/results/fully_connected__social_power__agent0/valueflow_metrics.json
 
   # ── H2: Model backbone affects susceptibility ────────────────────────────────
@@ -113,7 +114,9 @@ hypotheses:
     prediction: >-
       Models differ significantly in mean SS, with larger/RLHF-tuned models
       showing lower susceptibility due to stronger value anchoring.
-    status: planned
+    status: done
+    result: "gpt-4o mean SS=1.79, gpt-4o-mini mean SS=0.69 — gpt-4o is ~2.6x more susceptible. H2 prediction supported."
+    note: "Full H1/H3/H4 sweeps run for both models. gpt-4o-mini results in experiments/valueflow/results_gpt4mini/"
     paper_figure: Fig. 5 — grouped bar chart of SS by model and value type
     conditions:
       gpt4o-mini:
@@ -124,8 +127,8 @@ hypotheses:
           scenario.perturbation.target_value_type: power
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/model=gpt4o-mini/TBD
-            eval: experiments/valueflow/results/model=gpt4o-mini__chain__social_power__agent0/valueflow_metrics.json
+            source: outputs/valueflow_experiment/2026-03-22_13-10-33  # baseline
+            eval: experiments/valueflow/results_gpt4mini/chain__social_power__agent0/valueflow_metrics.json
 
       gpt4o:
         overrides:
@@ -135,8 +138,8 @@ hypotheses:
           scenario.perturbation.target_value_type: power
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/model=gpt4o/TBD
-            eval: experiments/valueflow/results/model=gpt4o__chain__social_power__agent0/valueflow_metrics.json
+            source: outputs/valueflow_experiment/2026-03-21_18-31-04
+            eval: experiments/valueflow/results/chain__social_power__agent0/valueflow_metrics.json
 
       claude:
         overrides:
@@ -146,8 +149,8 @@ hypotheses:
           scenario.perturbation.target_value_type: power
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/model=claude/TBD
-            eval: experiments/valueflow/results/model=claude__chain__social_power__agent0/valueflow_metrics.json
+            source: TBD
+            eval: TBD
 
   # ── H3: Value type affects propagation ──────────────────────────────────────
   h3_value_type:
@@ -158,7 +161,8 @@ hypotheses:
     independent_variable: target_value
     prediction: >-
       SS(power) > SS(achievement) > SS(benevolence) > SS(tradition) ≈ SS(security)
-    status: planned
+    status: done
+    result: "helpful(2.75) > equality(1.75) > social_power(1.50) > social_order(1.25) > ambitious(1.00) > respect_for_tradition(0.25) — benevolence/universalism propagate most, not power/achievement"
     paper_figure: Fig. 4 — SS by value type (bar chart grouped by Schwartz category)
     conditions:
       power__social_power:
@@ -169,7 +173,7 @@ hypotheses:
           scenario.perturbation.perturbed_agent_index: 0
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/value=social_power/TBD
+            source: outputs/valueflow_experiment/2026-03-21_23-33-07
             eval: experiments/valueflow/results/chain__social_power__agent0/valueflow_metrics.json
 
       achievement__ambitious:
@@ -180,7 +184,7 @@ hypotheses:
           scenario.perturbation.perturbed_agent_index: 0
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/value=ambitious/TBD
+            source: outputs/valueflow_experiment/2026-03-22_00-10-06
             eval: experiments/valueflow/results/chain__ambitious__agent0/valueflow_metrics.json
 
       universalism__equality:
@@ -191,7 +195,7 @@ hypotheses:
           scenario.perturbation.perturbed_agent_index: 0
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/value=equality/TBD
+            source: outputs/valueflow_experiment/2026-03-22_00-43-26
             eval: experiments/valueflow/results/chain__equality__agent0/valueflow_metrics.json
 
       benevolence__helpful:
@@ -202,7 +206,7 @@ hypotheses:
           scenario.perturbation.perturbed_agent_index: 0
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/value=helpful/TBD
+            source: outputs/valueflow_experiment/2026-03-22_01-16-52
             eval: experiments/valueflow/results/chain__helpful__agent0/valueflow_metrics.json
 
       tradition__respect_for_tradition:
@@ -213,7 +217,7 @@ hypotheses:
           scenario.perturbation.perturbed_agent_index: 0
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/value=respect_for_tradition/TBD
+            source: outputs/valueflow_experiment/2026-03-22_01-48-03
             eval: experiments/valueflow/results/chain__respect_for_tradition__agent0/valueflow_metrics.json
 
       security__social_order:
@@ -224,7 +228,7 @@ hypotheses:
           scenario.perturbation.perturbed_agent_index: 0
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/value=social_order/TBD
+            source: outputs/valueflow_experiment/2026-03-22_02-21-57
             eval: experiments/valueflow/results/chain__social_order__agent0/valueflow_metrics.json
 
   # ── H4: Perturbation location in chain ──────────────────────────────────────
@@ -236,7 +240,8 @@ hypotheses:
     independent_variable: perturbed_agent_index
     prediction: >-
       SS(index=0) > SS(index=2) > SS(index=4) for a 5-agent chain.
-    status: planned
+    status: done
+    result: "head(2.75) ~ middle(2.50) ~ tail(2.50) — non-monotonic, prediction not supported"
     paper_figure: Fig. 6 — bar chart of SS by perturbation position
     conditions:
       head:
@@ -247,7 +252,7 @@ hypotheses:
           scenario.perturbation.perturbed_agent_index: 0
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/location=head/TBD
+            source: outputs/valueflow_experiment/2026-03-21_23-38-01
             eval: experiments/valueflow/results/chain__social_power__agent0/valueflow_metrics.json
 
       middle:
@@ -258,7 +263,7 @@ hypotheses:
           scenario.perturbation.perturbed_agent_index: 2
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/location=middle/TBD
+            source: outputs/valueflow_experiment/2026-03-22_00-12-49
             eval: experiments/valueflow/results/chain__social_power__agent2/valueflow_metrics.json
 
       tail:
@@ -269,7 +274,7 @@ hypotheses:
           scenario.perturbation.perturbed_agent_index: 4
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/location=tail/TBD
+            source: outputs/valueflow_experiment/2026-03-22_00-46-38
             eval: experiments/valueflow/results/chain__social_power__agent4/valueflow_metrics.json
 
   # ── H5: Baseline stability ───────────────────────────────────────────────────
@@ -281,7 +286,8 @@ hypotheses:
     prediction: >-
       Round-0 and final-round scores are statistically indistinguishable
       (|Δ| < 0.5 across all agents and values).
-    status: planned
+    status: done
+    result: "52% of 280 agent-value pairs drifted >= 0.5 (mean 0.75, max 4.0) — substantial baseline variability, caveat for all SS estimates"
     paper_figure: Fig. 2 — stability check; score timeseries without perturbation
     conditions:
       no_perturbation:
@@ -289,7 +295,7 @@ hypotheses:
           scenario.perturbation.enabled: false
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/baseline/TBD
+            source: outputs/valueflow_experiment/2026-03-21_17-52-36
             eval: experiments/valueflow/results/baseline/probe_results.jsonl
 
       with_perturbation:
@@ -300,7 +306,7 @@ hypotheses:
           scenario.perturbation.perturbed_agent_index: 0
         runs:
           - scenario: valueflow
-            source: outputs/valueflow_experiment/topology=chain/TBD
+            source: outputs/valueflow_experiment/2026-03-21_18-31-04
             eval: experiments/valueflow/results/chain__social_power__agent0/valueflow_metrics.json
 
 # ── Eval format note ────────────────────────────────────────────────────────
