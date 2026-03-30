@@ -36,7 +36,9 @@ def build_topology_graph(
 
     Args:
         agent_names: Ordered list of agent names.
-        topology_type: One of chain, ring, star, fully_connected, custom.
+        topology_type: One of chain, ring, undirected_cycle, small_world,
+            community, core_periphery, core_periphery_bidirectional, star,
+            fully_connected, custom.
         custom_adjacency: Explicit adjacency for custom topology.
 
     Returns:
@@ -55,6 +57,108 @@ def build_topology_graph(
         # Like chain but last also observes first (and first observes last)
         for i in range(n):
             graph[agent_names[i]] = [agent_names[(i - 1) % n]]
+
+    elif topology_type == "undirected_cycle":
+        # Each agent observes both immediate neighbors in the cycle.
+        if n == 1:
+            return graph
+        if n == 2:
+            graph[agent_names[0]] = [agent_names[1]]
+            graph[agent_names[1]] = [agent_names[0]]
+            return graph
+        for i in range(n):
+            graph[agent_names[i]] = [
+                agent_names[(i - 1) % n],
+                agent_names[(i + 1) % n],
+            ]
+
+    elif topology_type == "small_world":
+        # Start from a local undirected cycle, then add a few deterministic
+        # long-range shortcuts to reduce path lengths.
+        if n == 1:
+            return graph
+        if n == 2:
+            graph[agent_names[0]] = [agent_names[1]]
+            graph[agent_names[1]] = [agent_names[0]]
+            return graph
+
+        for i in range(n):
+            graph[agent_names[i]] = [
+                agent_names[(i - 1) % n],
+                agent_names[(i + 1) % n],
+            ]
+
+        shortcut_pairs = [
+            (0, n // 2),
+            (n // 5, (n // 5) * 3 + 1),
+            ((n // 3) + 1, n - 3),
+        ]
+
+        for left_idx, right_idx in shortcut_pairs:
+            if left_idx >= n or right_idx >= n or left_idx == right_idx:
+                continue
+            left_agent = agent_names[left_idx]
+            right_agent = agent_names[right_idx]
+            if right_agent not in graph[left_agent]:
+                graph[left_agent].append(right_agent)
+            if left_agent not in graph[right_agent]:
+                graph[right_agent].append(left_agent)
+
+    elif topology_type == "community":
+        # Three dense communities of five agents each. The first agent in each
+        # community acts as a bridge, and bridge agents form a triangle.
+        if n != 15:
+            raise ValueError("community topology requires exactly 15 agents (3 clusters of 5)")
+
+        community_size = 5
+        communities = [
+            agent_names[i : i + community_size] for i in range(0, n, community_size)
+        ]
+
+        for community in communities:
+            for agent in community:
+                graph[agent] = [peer for peer in community if peer != agent]
+
+        bridge_agents = [community[0] for community in communities]
+        for bridge_agent in bridge_agents:
+            graph[bridge_agent].extend(
+                other_bridge for other_bridge in bridge_agents if other_bridge != bridge_agent
+            )
+
+    elif topology_type in {"core_periphery", "core_periphery_bidirectional"}:
+        # Five-node dense core plus ten peripheral agents that attach to pairs
+        # of core agents. The bidirectional variant also lets each core agent
+        # observe the peripheral agents attached to it.
+        if n != 15:
+            raise ValueError(
+                f"{topology_type} topology requires exactly 15 agents (5 core, 10 periphery)"
+            )
+
+        core = agent_names[:5]
+        periphery = agent_names[5:]
+        core_pair_pattern = [
+            (0, 1),
+            (1, 2),
+            (2, 3),
+            (3, 4),
+            (4, 0),
+            (0, 2),
+            (1, 3),
+            (2, 4),
+            (3, 0),
+            (4, 1),
+        ]
+
+        for agent in core:
+            graph[agent] = [peer for peer in core if peer != agent]
+
+        for periphery_agent, (left_idx, right_idx) in zip(periphery, core_pair_pattern, strict=True):
+            assigned_core = [core[left_idx], core[right_idx]]
+            graph[periphery_agent] = assigned_core
+
+            if topology_type == "core_periphery_bidirectional":
+                for core_agent in assigned_core:
+                    graph[core_agent].append(periphery_agent)
 
     elif topology_type == "star":
         # Agent_0 is the hub. All others observe Agent_0.
