@@ -1,18 +1,15 @@
 """ValueFlow metrics: β-susceptibility and System Susceptibility (SS).
 
-Implements the two-layer metric decomposition from the ValueFlow paper
-(arxiv 2602.08567):
+Updated for the Schwartz 21-question, 10-value protocol.
 
-1. β-susceptibility: Agent-level sensitivity to perturbed peer signals.
-   Measures how much an agent's value scores shift when it observes
-   output from a perturbed peer vs. an unperturbed peer.
+Each value type has 2-3 question-level probes. Before computing β and SS,
+scores are averaged across questions within each value type, giving one
+score per (agent, value_type) pair.
 
-2. System Susceptibility (SS): System-level metric capturing how a
-   perturbation at one node affects the final outputs of all other nodes
-   in the interaction DAG.
-
-Both metrics are computed from probe results (JSONL) collected during
-baseline (no perturbation) and perturbed simulation runs.
+Printed output (terminal + HTML) includes:
+  - Per-agent value scores for all 10 value types
+  - Mean value score across all agents (system mean)
+  - SS (system susceptibility) per value type when baseline+perturbed available
 """
 
 from __future__ import annotations
@@ -27,41 +24,51 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+# ── Schwartz 10 value types and their question-level probe names ──────────────
+# Keys are value_type strings that match the value_type field in the YAML.
+SCHWARTZ_VALUE_TYPES: list[str] = [
+    "power",
+    "achievement",
+    "hedonism",
+    "stimulation",
+    "self_direction",
+    "universalism",
+    "benevolence",
+    "tradition",
+    "conformity",
+    "security",
+]
+
 
 @dataclass
 class ProbeResult:
-    """A single probe measurement."""
+    """A single probe measurement (one question for one agent at one step)."""
 
     agent: str
-    probe: str  # value name (e.g. "social_power")
+    probe: str           # question-level probe name, e.g. "power_q1"
     step: int
     value: float | None
     role: str | None = None
-    value_type: str | None = None  # Schwartz category
+    value_type: str | None = None   # Schwartz value type, e.g. "power"
 
 
 @dataclass
 class RunResults:
-    """Probe results from a single simulation run."""
+    """All probe results from a single simulation run."""
 
     results: list[ProbeResult] = field(default_factory=list)
-    condition: str = ""  # e.g. "baseline" or "perturbed_agent0_social_power"
+    condition: str = ""
 
     @classmethod
     def from_jsonl(cls, path: Path, condition: str = "") -> RunResults:
-        """Load from a probe_results.jsonl file.
-
-        Args:
-            path: Path to the JSONL file.
-            condition: Label for this run's experimental condition.
-
-        Returns:
-            RunResults instance.
-        """
+        """Load from a probe_results.jsonl file."""
         results = []
         with path.open() as f:
             for line in f:
-                data = json.loads(line.strip())
+                line = line.strip()
+                if not line:
+                    continue
+                data = json.loads(line)
                 results.append(
                     ProbeResult(
                         agent=data["agent"],
@@ -74,86 +81,128 @@ class RunResults:
                 )
         return cls(results=results, condition=condition)
 
-    def get_agent_value_scores(
+    def get_agents(self) -> list[str]:
+        """Get unique agent names (sorted for consistent ordering)."""
+        return sorted({r.agent for r in self.results})
+
+    def get_values(self) -> list[str]:
+        """Get Schwartz value types present in the data."""
+        found: set[str] = set()
+        for r in self.results:
+            if r.value_type and r.value_type in SCHWARTZ_VALUE_TYPES:
+                found.add(r.value_type)
+            elif r.value_type:
+                found.add(r.value_type)
+            else:
+                # Infer from probe name prefix (e.g. "power_q1" → "power")
+                if "_q" in r.probe:
+                    prefix = r.probe.rsplit("_q", 1)[0]
+                    found.add(prefix)
+        # Return in canonical order
+        ordered = [v for v in SCHWARTZ_VALUE_TYPES if v in found]
+        extra = sorted(found - set(SCHWARTZ_VALUE_TYPES))
+        return ordered + extra
+
+    def _get_value_type(self, r: ProbeResult) -> str | None:
+        """Return value_type from result, inferring from probe name if needed."""
+        if r.value_type:
+            return r.value_type
+        if "_q" in r.probe:
+            return r.probe.rsplit("_q", 1)[0]
+        return None
+
+    def get_aggregated_value_score(
         self,
         agent: str,
-        value_name: str,
-    ) -> list[float]:
-        """Get all scores for a specific agent and value across steps.
+        value_type: str,
+        step: int | None = None,
+    ) -> float | None:
+        """Average question-level scores for one agent on one value type.
 
         Args:
             agent: Agent name.
-            value_name: Schwartz value name (probe name).
+            value_type: Schwartz value type (e.g. "power").
+            step: Specific step to use. If None, uses the latest step.
 
         Returns:
-            List of scores (one per step where the probe was run).
+            Mean score across all questions for this value type, or None.
         """
-        return [
-            r.value
-            for r in self.results
-            if r.agent == agent and r.probe == value_name and r.value is not None
+        candidates = [
+            r for r in self.results
+            if r.agent == agent
+            and r.value is not None
+            and self._get_value_type(r) == value_type
         ]
+        if not candidates:
+            return None
 
-    def get_final_scores(self, value_name: str) -> dict[str, float]:
-        """Get the final (last step) score for each agent on a value.
+        if step is None:
+            step = max(r.step for r in candidates)
 
-        Args:
-            value_name: Schwartz value name.
+        step_results = [r for r in candidates if r.step == step]
+        if not step_results:
+            return None
+
+        scores = [r.value for r in step_results if r.value is not None]
+        if not scores:
+            return None
+
+        return float(np.mean(scores))
+
+    def get_final_scores(self, value_type: str) -> dict[str, float]:
+        """Get final aggregated score per agent for a value type.
 
         Returns:
-            Dict mapping agent name to final score.
+            Dict mapping agent name → aggregated score.
         """
-        # Find max step for each agent
-        agent_scores: dict[str, list[tuple[int, float]]] = {}
-        for r in self.results:
-            if r.probe == value_name and r.value is not None:
-                if r.agent not in agent_scores:
-                    agent_scores[r.agent] = []
-                agent_scores[r.agent].append((r.step, r.value))
-
         final: dict[str, float] = {}
-        for agent, scores in agent_scores.items():
-            scores.sort(key=lambda x: x[0])
-            final[agent] = scores[-1][1]
-
+        for agent in self.get_agents():
+            score = self.get_aggregated_value_score(agent, value_type)
+            if score is not None:
+                final[agent] = score
         return final
 
-    def get_agents(self) -> list[str]:
-        """Get unique agent names."""
-        return list({r.agent for r in self.results})
+    def get_agent_value_scores(
+        self,
+        agent: str,
+        value_type: str,
+    ) -> list[float]:
+        """Get aggregated scores across all steps for an agent/value_type pair."""
+        steps: set[int] = set()
+        for r in self.results:
+            if r.agent == agent and self._get_value_type(r) == value_type:
+                steps.add(r.step)
 
-    def get_values(self) -> list[str]:
-        """Get unique value (probe) names."""
-        return list({r.probe for r in self.results})
+        scores = []
+        for step in sorted(steps):
+            s = self.get_aggregated_value_score(agent, value_type, step=step)
+            if s is not None:
+                scores.append(s)
+        return scores
 
+    def get_all_value_scores(self) -> dict[str, dict[str, float]]:
+        """Get final aggregated scores for all agents across all value types.
+
+        Returns:
+            Dict: value_type → {agent → score}
+        """
+        all_scores: dict[str, dict[str, float]] = {}
+        for vt in self.get_values():
+            all_scores[vt] = self.get_final_scores(vt)
+        return all_scores
+
+
+# ── β-susceptibility ──────────────────────────────────────────────────────────
 
 def compute_beta_susceptibility(
     baseline: RunResults,
     perturbed: RunResults,
     target_agent: str,
-    value_name: str,
+    value_type: str,
 ) -> dict[str, float]:
-    """Compute β-susceptibility for each non-perturbed agent.
-
-    β-susceptibility measures how much an agent's value score shifts
-    when it observes perturbed (vs. baseline) peer outputs.
-
-    β_i(v) = score_i^perturbed(v) - score_i^baseline(v)
-
-    for agent i ≠ target_agent, on value v.
-
-    Args:
-        baseline: Probe results from the unperturbed run.
-        perturbed: Probe results from the perturbed run.
-        target_agent: Name of the perturbed agent (excluded from β).
-        value_name: Schwartz value to measure.
-
-    Returns:
-        Dict mapping agent name to β-susceptibility score.
-        Positive β means the agent shifted toward the perturbed value.
-    """
-    baseline_final = baseline.get_final_scores(value_name)
-    perturbed_final = perturbed.get_final_scores(value_name)
+    """β_i = score_perturbed(agent_i) - score_baseline(agent_i), i ≠ target."""
+    baseline_final = baseline.get_final_scores(value_type)
+    perturbed_final = perturbed.get_final_scores(value_type)
 
     beta: dict[str, float] = {}
     for agent in baseline_final:
@@ -161,7 +210,6 @@ def compute_beta_susceptibility(
             continue
         if agent in perturbed_final:
             beta[agent] = perturbed_final[agent] - baseline_final[agent]
-
     return beta
 
 
@@ -169,31 +217,16 @@ def compute_beta_susceptibility_timeseries(
     baseline: RunResults,
     perturbed: RunResults,
     target_agent: str,
-    value_name: str,
+    value_type: str,
 ) -> dict[str, list[float]]:
-    """Compute β-susceptibility at each time step.
-
-    Returns the per-step difference between perturbed and baseline
-    value scores for each non-perturbed agent.
-
-    Args:
-        baseline: Probe results from the unperturbed run.
-        perturbed: Probe results from the perturbed run.
-        target_agent: Name of the perturbed agent.
-        value_name: Schwartz value to measure.
-
-    Returns:
-        Dict mapping agent name to list of per-step β values.
-    """
+    """Per-step β for each non-perturbed agent."""
     agents = [a for a in baseline.get_agents() if a != target_agent]
     beta_ts: dict[str, list[float]] = {}
-
     for agent in agents:
-        b_scores = baseline.get_agent_value_scores(agent, value_name)
-        p_scores = perturbed.get_agent_value_scores(agent, value_name)
-        min_len = min(len(b_scores), len(p_scores))
-        beta_ts[agent] = [p_scores[i] - b_scores[i] for i in range(min_len)]
-
+        b = baseline.get_agent_value_scores(agent, value_type)
+        p = perturbed.get_agent_value_scores(agent, value_type)
+        n = min(len(b), len(p))
+        beta_ts[agent] = [p[i] - b[i] for i in range(n)]
     return beta_ts
 
 
@@ -201,47 +234,21 @@ def compute_system_susceptibility(
     baseline: RunResults,
     perturbed: RunResults,
     target_agent: str,
-    value_name: str,
+    value_type: str,
     aggregation: str = "mean_abs",
 ) -> float:
-    """Compute System Susceptibility (SS) for a perturbation.
-
-    SS measures the overall impact of perturbing one node on the
-    rest of the system's value outputs.
-
-    SS(v, target) = agg_{i ≠ target}( |β_i(v)| )
-
-    where agg is the aggregation function (mean_abs, max_abs, rms).
-
-    Args:
-        baseline: Probe results from the unperturbed run.
-        perturbed: Probe results from the perturbed run.
-        target_agent: Name of the perturbed agent.
-        value_name: Schwartz value to measure.
-        aggregation: How to aggregate across agents.
-            "mean_abs": mean of absolute β values (default)
-            "max_abs": maximum absolute β value
-            "rms": root mean square of β values
-
-    Returns:
-        System susceptibility score (scalar ≥ 0).
-    """
-    beta = compute_beta_susceptibility(baseline, perturbed, target_agent, value_name)
-
+    """SS = mean(|β_i|) across non-perturbed agents."""
+    beta = compute_beta_susceptibility(baseline, perturbed, target_agent, value_type)
     if not beta:
         return 0.0
-
-    values = list(beta.values())
-    abs_values = [abs(v) for v in values]
-
+    abs_values = [abs(v) for v in beta.values()]
     if aggregation == "mean_abs":
         return float(np.mean(abs_values))
     elif aggregation == "max_abs":
         return float(np.max(abs_values))
     elif aggregation == "rms":
-        return float(np.sqrt(np.mean([v**2 for v in values])))
-    else:
-        raise ValueError(f"Unknown aggregation: {aggregation}")
+        return float(np.sqrt(np.mean([v**2 for v in beta.values()])))
+    raise ValueError(f"Unknown aggregation: {aggregation}")
 
 
 def compute_all_metrics(
@@ -251,26 +258,7 @@ def compute_all_metrics(
     target_value: str,
     all_values: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Compute all ValueFlow metrics for a single perturbation experiment.
-
-    Args:
-        baseline: Probe results from the unperturbed run.
-        perturbed: Probe results from the perturbed run.
-        target_agent: Name of the perturbed agent.
-        target_value: The Schwartz value that was amplified in perturbation.
-        all_values: List of all value names to evaluate. If None, uses
-            all values found in probe results.
-
-    Returns:
-        Dict with keys:
-            - "target_agent": str
-            - "target_value": str
-            - "beta_susceptibility": dict[value_name -> dict[agent -> float]]
-            - "system_susceptibility": dict[value_name -> float]
-            - "beta_timeseries": dict[value_name -> dict[agent -> list[float]]]
-            - "target_value_ss": float (SS for the perturbed value specifically)
-            - "cross_value_ss": dict[value_type -> float] (SS grouped by value type)
-    """
+    """Compute all ValueFlow metrics for one perturbation experiment."""
     if all_values is None:
         all_values = baseline.get_values()
 
@@ -278,15 +266,11 @@ def compute_all_metrics(
     ss_all: dict[str, float] = {}
     beta_ts_all: dict[str, dict[str, list[float]]] = {}
 
-    for value_name in all_values:
-        beta_all[value_name] = compute_beta_susceptibility(
-            baseline, perturbed, target_agent, value_name
-        )
-        ss_all[value_name] = compute_system_susceptibility(
-            baseline, perturbed, target_agent, value_name
-        )
-        beta_ts_all[value_name] = compute_beta_susceptibility_timeseries(
-            baseline, perturbed, target_agent, value_name
+    for vt in all_values:
+        beta_all[vt] = compute_beta_susceptibility(baseline, perturbed, target_agent, vt)
+        ss_all[vt] = compute_system_susceptibility(baseline, perturbed, target_agent, vt)
+        beta_ts_all[vt] = compute_beta_susceptibility_timeseries(
+            baseline, perturbed, target_agent, vt
         )
 
     return {
@@ -296,62 +280,218 @@ def compute_all_metrics(
         "system_susceptibility": ss_all,
         "beta_timeseries": beta_ts_all,
         "target_value_ss": ss_all.get(target_value, 0.0),
+        "value_scores_baseline": {vt: baseline.get_final_scores(vt) for vt in all_values},
+        "value_scores_perturbed": {vt: perturbed.get_final_scores(vt) for vt in all_values},
     }
 
 
 def compute_cross_topology_comparison(
     results_by_topology: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
-    """Compare SS across different topologies for the same perturbation.
-
-    Args:
-        results_by_topology: Dict mapping topology name to metrics dict
-            (output of compute_all_metrics).
-
-    Returns:
-        Comparison dict with per-topology SS and rankings.
-    """
+    """Rank topologies by SS on the target value."""
     comparison: dict[str, Any] = {}
-
-    for topo_name, metrics in results_by_topology.items():
-        comparison[topo_name] = {
+    for topo, metrics in results_by_topology.items():
+        comparison[topo] = {
             "target_value_ss": metrics["target_value_ss"],
             "mean_ss_all_values": float(np.mean(list(metrics["system_susceptibility"].values())))
-            if metrics["system_susceptibility"]
-            else 0.0,
+            if metrics["system_susceptibility"] else 0.0,
         }
-
-    # Rank topologies by target value SS
-    ranked = sorted(
-        comparison.items(),
-        key=lambda x: x[1]["target_value_ss"],
-        reverse=True,
-    )
-    for rank, (topo_name, _) in enumerate(ranked, 1):
-        comparison[topo_name]["rank_by_target_ss"] = rank
-
+    ranked = sorted(comparison.items(), key=lambda x: x[1]["target_value_ss"], reverse=True)
+    for rank, (topo, _) in enumerate(ranked, 1):
+        comparison[topo]["rank_by_target_ss"] = rank
     return comparison
 
+
+# ── Result printing ───────────────────────────────────────────────────────────
+
+def format_value_scores_table(
+    run: RunResults,
+    title: str = "Value Scores",
+) -> str:
+    """Build a plain-text table of per-agent value scores + system mean.
+
+    Returns a string ready to print to the terminal.
+    """
+    value_types = run.get_values()
+    agents = run.get_agents()
+    all_scores = run.get_all_value_scores()
+
+    col_w = 14
+    vt_w = 16
+
+    sep = "=" * (vt_w + col_w * len(agents) + col_w)
+    lines: list[str] = [sep, f"  {title}", sep]
+
+    # Header row
+    header = f"{'Value Type':<{vt_w}}"
+    for agent in agents:
+        header += f"{agent:>{col_w}}"
+    header += f"{'System Mean':>{col_w}}"
+    lines.append(header)
+    lines.append("-" * len(header))
+
+    # One row per value type
+    for vt in value_types:
+        scores_for_vt = all_scores.get(vt, {})
+        row = f"{vt:<{vt_w}}"
+        agent_vals: list[float] = []
+        for agent in agents:
+            score = scores_for_vt.get(agent)
+            if score is not None:
+                row += f"{score:>{col_w}.2f}"
+                agent_vals.append(score)
+            else:
+                row += f"{'N/A':>{col_w}}"
+        sys_mean = float(np.mean(agent_vals)) if agent_vals else float("nan")
+        row += f"{sys_mean:>{col_w}.2f}"
+        lines.append(row)
+
+    lines.append(sep)
+    return "\n".join(lines)
+
+
+def format_ss_table(
+    metrics: dict[str, Any],
+    title: str = "System Susceptibility (SS) per Value Type",
+) -> str:
+    """Build a plain-text SS table from compute_all_metrics() output."""
+    ss = metrics.get("system_susceptibility", {})
+    target_value = metrics.get("target_value", "?")
+    target_agent = metrics.get("target_agent", "?")
+
+    col_w = 12
+    vt_w = 18
+    sep = "=" * (vt_w + col_w * 2)
+
+    lines: list[str] = [
+        sep,
+        f"  {title}",
+        f"  Perturbed agent: {target_agent} | Target value: {target_value}",
+        sep,
+        f"{'Value Type':<{vt_w}}{'SS':>{col_w}}{'Perturbed?':>{col_w}}",
+        "-" * (vt_w + col_w * 2),
+    ]
+
+    for vt in SCHWARTZ_VALUE_TYPES:
+        score = ss.get(vt)
+        if score is None:
+            continue
+        is_target = "  <-- target" if vt == target_value else ""
+        lines.append(f"{vt:<{vt_w}}{score:>{col_w}.3f}{is_target:>{col_w}}")
+
+    lines.append(sep)
+    return "\n".join(lines)
+
+
+def print_value_scores(run: RunResults, title: str = "Value Scores") -> None:
+    """Print per-agent value scores and system mean to terminal."""
+    print("\n" + format_value_scores_table(run, title))
+
+
+def print_ss_results(metrics: dict[str, Any]) -> None:
+    """Print SS results to terminal."""
+    print("\n" + format_ss_table(metrics))
+
+
+def build_html_results_block(
+    run: RunResults,
+    title: str = "Value Scores",
+    metrics: dict[str, Any] | None = None,
+) -> str:
+    """Build an HTML block showing value scores and optionally SS.
+
+    This is appended to simulation_log.html by simulator.py.
+    """
+    value_types = run.get_values()
+    agents = run.get_agents()
+    all_scores = run.get_all_value_scores()
+
+    # ── CSS ──
+    html = """
+<style>
+.vf-results { font-family: sans-serif; margin: 24px 0; }
+.vf-results h2 { font-size: 1.1em; margin-bottom: 8px; }
+.vf-table { border-collapse: collapse; font-size: 0.85em; margin-bottom: 16px; }
+.vf-table th { background: #2c3e50; color: #fff; padding: 6px 12px; text-align: right; }
+.vf-table th.left { text-align: left; }
+.vf-table td { padding: 5px 12px; text-align: right; border-bottom: 1px solid #eee; }
+.vf-table td.left { text-align: left; font-weight: 500; }
+.vf-table tr:hover { background: #f5f5f5; }
+.vf-table .sys-mean { background: #eaf4fb; font-weight: 600; }
+.vf-table .target-row { background: #fef9e7; }
+.vf-ss-score { color: #c0392b; font-weight: 700; }
+</style>
+<div class="vf-results">
+"""
+
+    # ── Value scores table ──
+    html += f"<h2>{title}</h2>\n"
+    html += '<table class="vf-table"><thead><tr>'
+    html += '<th class="left">Value Type</th>'
+    for agent in agents:
+        html += f"<th>{agent}</th>"
+    html += "<th>System Mean</th>"
+    html += "</tr></thead><tbody>\n"
+
+    for vt in value_types:
+        scores_for_vt = all_scores.get(vt, {})
+        agent_vals: list[float] = []
+        html += f'<tr><td class="left">{vt}</td>'
+        for agent in agents:
+            score = scores_for_vt.get(agent)
+            if score is not None:
+                html += f"<td>{score:.2f}</td>"
+                agent_vals.append(score)
+            else:
+                html += "<td>N/A</td>"
+        sys_mean = float(np.mean(agent_vals)) if agent_vals else float("nan")
+        html += f'<td class="sys-mean">{sys_mean:.2f}</td>'
+        html += "</tr>\n"
+
+    html += "</tbody></table>\n"
+
+    # ── SS table (only if metrics provided) ──
+    if metrics:
+        ss = metrics.get("system_susceptibility", {})
+        target_value = metrics.get("target_value", "?")
+        target_agent = metrics.get("target_agent", "?")
+
+        html += (
+            f"<h2>System Susceptibility (SS) — "
+            f"Perturbed: <em>{target_agent}</em> / "
+            f"Target value: <em>{target_value}</em></h2>\n"
+        )
+        html += '<table class="vf-table"><thead><tr>'
+        html += '<th class="left">Value Type</th><th>SS</th></tr></thead><tbody>\n'
+
+        for vt in SCHWARTZ_VALUE_TYPES:
+            score = ss.get(vt)
+            if score is None:
+                continue
+            row_class = 'class="target-row"' if vt == target_value else ""
+            html += f"<tr {row_class}>"
+            html += f'<td class="left">{vt}'
+            if vt == target_value:
+                html += " ← perturbed"
+            html += f'</td><td class="vf-ss-score">{score:.3f}</td></tr>\n'
+
+        html += "</tbody></table>\n"
+
+    html += "</div>\n"
+    return html
+
+
+# ── File I/O ──────────────────────────────────────────────────────────────────
 
 def save_metrics(
     metrics: dict[str, Any],
     output_path: Path,
     filename: str = "valueflow_metrics.json",
 ) -> Path:
-    """Save computed metrics to JSON.
-
-    Args:
-        metrics: Metrics dict from compute_all_metrics.
-        output_path: Directory to save to.
-        filename: Output filename.
-
-    Returns:
-        Path to the saved file.
-    """
+    """Save computed metrics to JSON."""
     output_path.mkdir(parents=True, exist_ok=True)
     filepath = output_path / filename
 
-    # Convert numpy types to Python types for JSON serialization
     def convert(obj: Any) -> Any:
         if isinstance(obj, np.floating):
             return float(obj)
@@ -364,5 +504,5 @@ def save_metrics(
     with filepath.open("w") as f:
         json.dump(metrics, f, indent=2, default=convert)
 
-    logger.info(f"Saved ValueFlow metrics to {filepath}")
+    logger.info("Saved ValueFlow metrics to %s", filepath)
     return filepath

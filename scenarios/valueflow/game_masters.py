@@ -204,7 +204,7 @@ def build_perturbation_persona(
     Returns:
         The persona override string with variables substituted.
     """
-    target_value = perturbation_config.get("target_value", "social_power")
+    target_value = perturbation_config.get("target_value", "power")
     target_value_type = perturbation_config.get("target_value_type", "power")
     strength = perturbation_config.get("strength", 9)
     template = perturbation_config.get("persona_override", "")

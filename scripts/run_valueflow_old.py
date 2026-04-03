@@ -4,28 +4,24 @@
 Orchestrates the full ValueFlow experimental pipeline:
 1. Run baseline simulation (no perturbation)
 2. Run perturbed simulation(s)
-3. Compute β-susceptibility and System Susceptibility (SS)
-4. Print per-agent value scores and SS to terminal
-5. Save metrics and generate summary
+3. Compute β-susceptibility and System Susceptibility
+4. Save metrics and generate summary
 
 Usage:
-    # Run a single perturbation experiment (chain topology, power)
+    # Run a single perturbation experiment (chain topology, social_power)
     uv run python scripts/run_valueflow.py
 
     # Sweep topologies
     uv run python scripts/run_valueflow.py --topologies chain ring star fully_connected
 
     # Sweep values
-    uv run python scripts/run_valueflow.py --values power ambitious helpful
+    uv run python scripts/run_valueflow.py --values social_power ambitious helpful
 
     # Sweep perturbation locations in chain
     uv run python scripts/run_valueflow.py --locations 0 2 4
 
     # Dry run (print commands without executing)
     uv run python scripts/run_valueflow.py --dry-run
-
-    # Use the 21-question Schwartz evaluation
-    uv run python scripts/run_valueflow.py --evaluation valueflow_schwartz21
 """
 
 from __future__ import annotations
@@ -42,21 +38,19 @@ logger = logging.getLogger(__name__)
 
 # Default experiment parameters
 DEFAULT_TOPOLOGIES = ["chain"]
-DEFAULT_VALUES = ["power"]
+DEFAULT_VALUES = ["social_power"]
 DEFAULT_LOCATIONS = [0]
 DEFAULT_MODEL = "gpt4o"
 DEFAULT_ROUNDS = 3
 DEFAULT_MAX_STEPS = 20
-DEFAULT_EVALUATION = "valueflow_schwartz21"
-DEFAULT_SCENARIO = "valueflow"
 
 
 def build_hydra_command(
-    scenario: str = DEFAULT_SCENARIO,
-    evaluation: str = DEFAULT_EVALUATION,
+    scenario: str = "valueflow",
+    evaluation: str = "valueflow",
     model: str = DEFAULT_MODEL,
     topology: str = "chain",
-    target_value: str = "power",
+    target_value: str = "social_power",
     target_value_type: str = "power",
     perturbed_index: int = 0,
     perturbation_enabled: bool = True,
@@ -64,7 +58,24 @@ def build_hydra_command(
     max_steps: int = DEFAULT_MAX_STEPS,
     extra_overrides: list[str] | None = None,
 ) -> list[str]:
-    """Build the Hydra CLI command for a single run."""
+    """Build the Hydra CLI command for a single run.
+
+    Args:
+        scenario: Scenario name.
+        evaluation: Evaluation config name.
+        model: Model config name.
+        topology: Topology type.
+        target_value: Schwartz value to perturb.
+        target_value_type: Higher-order Schwartz category.
+        perturbed_index: Agent index to perturb.
+        perturbation_enabled: Whether perturbation is active.
+        num_rounds: Number of interaction rounds.
+        max_steps: Maximum simulation steps.
+        extra_overrides: Additional Hydra overrides.
+
+    Returns:
+        List of command-line arguments.
+    """
     cmd = [
         os.path.expanduser(sys.executable),
         "run_experiment.py",
@@ -80,44 +91,54 @@ def build_hydra_command(
         f"scenario.interaction.num_rounds={num_rounds}",
         f"simulation.execution.max_steps={max_steps}",
     ]
+
     if extra_overrides:
         cmd.extend(extra_overrides)
+
     return cmd
 
 
 # Map value names to their Schwartz type
-# VALUE_TYPE_MAP = {
-#     "social_power": "power",
-#     "authority": "power",
-#     "wealth": "power",
-#     "successful": "achievement",
-#     "ambitious": "achievement",
-#     "influential": "achievement",
-#     "pleasure": "hedonism",
-#     "enjoying_life": "hedonism",
-#     "daring": "stimulation",
-#     "creativity": "self_direction",
-#     "freedom": "self_direction",
-#     "broadminded": "universalism",
-#     "equality": "universalism",
-#     "social_justice": "universalism",
-#     "helpful": "benevolence",
-#     "honest": "benevolence",
-#     "loyal": "benevolence",
-#     "devout": "tradition",
-#     "respect_for_tradition": "tradition",
-#     "humble": "tradition",
-#     "politeness": "conformity",
-#     "obedient": "conformity",
-#     "self_discipline": "conformity",
-#     "family_security": "security",
-#     "social_order": "security",
-#     "national_security": "security",
-# }
+VALUE_TYPE_MAP = {
+    "social_power": "power",
+    "authority": "power",
+    "wealth": "power",
+    "successful": "achievement",
+    "ambitious": "achievement",
+    "influential": "achievement",
+    "pleasure": "hedonism",
+    "enjoying_life": "hedonism",
+    "daring": "stimulation",
+    "creativity": "self_direction",
+    "freedom": "self_direction",
+    "broadminded": "universalism",
+    "equality": "universalism",
+    "social_justice": "universalism",
+    "helpful": "benevolence",
+    "honest": "benevolence",
+    "loyal": "benevolence",
+    "devout": "tradition",
+    "respect_for_tradition": "tradition",
+    "humble": "tradition",
+    "politeness": "conformity",
+    "obedient": "conformity",
+    "self_discipline": "conformity",
+    "family_security": "security",
+    "social_order": "security",
+    "national_security": "security",
+}
 
 
 def run_experiment(cmd: list[str], dry_run: bool = False) -> str | None:
-    """Run a single experiment and return the output directory."""
+    """Run a single experiment and return the output directory.
+
+    Args:
+        cmd: Command-line arguments.
+        dry_run: If True, print command without executing.
+
+    Returns:
+        Output directory path, or None on failure/dry-run.
+    """
     cmd_str = " ".join(cmd)
 
     if dry_run:
@@ -135,6 +156,7 @@ def run_experiment(cmd: list[str], dry_run: bool = False) -> str | None:
             text=True,
             check=True,
         )
+        # Try to extract output directory from stdout
         for line in result.stdout.split("\n"):
             if "Output Dir:" in line:
                 return line.split("Output Dir:")[-1].strip()
@@ -152,13 +174,21 @@ def compute_metrics_from_runs(
     target_value: str,
     output_dir: str,
 ) -> dict | None:
-    """Compute ValueFlow metrics and print results to terminal."""
+    """Compute ValueFlow metrics from baseline and perturbed run outputs.
+
+    Args:
+        baseline_dir: Path to baseline run output directory.
+        perturbed_dir: Path to perturbed run output directory.
+        target_agent: Name of the perturbed agent.
+        target_value: Schwartz value that was perturbed.
+        output_dir: Where to save metrics.
+
+    Returns:
+        Metrics dict, or None on failure.
+    """
     from scenarios.valueflow.metrics import (
         RunResults,
-        build_html_results_block,
         compute_all_metrics,
-        print_ss_results,
-        print_value_scores,
         save_metrics,
     )
 
@@ -183,29 +213,6 @@ def compute_metrics_from_runs(
     )
 
     save_metrics(metrics, Path(output_dir))
-
-    # ── Print value scores for both runs ──────────────────────────────────
-    print_value_scores(baseline, title="Value Scores — Baseline Run")
-    print_value_scores(perturbed, title="Value Scores — Perturbed Run")
-
-    # ── Print SS table ─────────────────────────────────────────────────────
-    print_ss_results(metrics)
-
-    # ── Append SS results to perturbed run's HTML ──────────────────────────
-    perturbed_html = Path(perturbed_dir) / "simulation_log.html"
-    if perturbed_html.exists():
-        try:
-            ss_html = build_html_results_block(
-                perturbed,
-                title="Value Scores — Perturbed Run",
-                metrics=metrics,
-            )
-            with perturbed_html.open("a", encoding="utf-8") as f:
-                f.write("\n<!-- ValueFlow SS Results -->\n")
-                f.write(ss_html)
-        except Exception as e:
-            logger.warning(f"Failed to append SS HTML: {e}")
-
     return metrics
 
 
@@ -213,48 +220,60 @@ def main() -> None:
     """Run the ValueFlow experiment pipeline."""
     parser = argparse.ArgumentParser(description="ValueFlow experiment runner")
     parser.add_argument(
-        "--scenario", default=DEFAULT_SCENARIO,
-        help="Scenario config name",
-    )
-    parser.add_argument(
-        "--topologies", nargs="+", default=DEFAULT_TOPOLOGIES,
+        "--topologies",
+        nargs="+",
+        default=DEFAULT_TOPOLOGIES,
         help="Topologies to sweep",
     )
     parser.add_argument(
-        "--values", nargs="+", default=DEFAULT_VALUES,
+        "--values",
+        nargs="+",
+        default=DEFAULT_VALUES,
         help="Schwartz values to perturb",
     )
     parser.add_argument(
-        "--locations", nargs="+", type=int, default=DEFAULT_LOCATIONS,
+        "--locations",
+        nargs="+",
+        type=int,
+        default=DEFAULT_LOCATIONS,
         help="Agent indices to perturb",
     )
     parser.add_argument(
-        "--model", default=DEFAULT_MODEL,
+        "--model",
+        default=DEFAULT_MODEL,
         help="Model config name",
     )
     parser.add_argument(
-        "--rounds", type=int, default=DEFAULT_ROUNDS,
+        "--rounds",
+        type=int,
+        default=DEFAULT_ROUNDS,
         help="Number of interaction rounds",
     )
     parser.add_argument(
-        "--max-steps", type=int, default=DEFAULT_MAX_STEPS,
+        "--max-steps",
+        type=int,
+        default=DEFAULT_MAX_STEPS,
         help="Maximum simulation steps",
     )
     parser.add_argument(
-        "--evaluation", default=DEFAULT_EVALUATION,
-        help="Evaluation config name (default: valueflow_schwartz21)",
-    )
-    parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Print commands without executing",
     )
     parser.add_argument(
-        "--output-dir", default="experiments/valueflow/results",
+        "--output-dir",
+        default="experiments/valueflow/results",
         help="Base output directory for metrics",
     )
     parser.add_argument(
-        "--baseline-dir", default=None,
-        help="Reuse an existing baseline run output directory.",
+        "--baseline-dir",
+        default=None,
+        help=(
+            "Path to an existing baseline run output directory. "
+            "If provided, the baseline simulation is skipped and this directory "
+            "is used directly. Useful when running multiple hypothesis sweeps "
+            "that share the same baseline."
+        ),
     )
 
     args = parser.parse_args()
@@ -263,62 +282,55 @@ def main() -> None:
     print("=" * 60)
     print("ValueFlow Experiment Pipeline")
     print("=" * 60)
-    print(f"Scenario:    {args.scenario}")
-    print(f"Topologies:  {args.topologies}")
-    print(f"Values:      {args.values}")
-    print(f"Locations:   {args.locations}")
-    print(f"Model:       {args.model}")
-    print(f"Evaluation:  {args.evaluation}")
-    print(f"Rounds:      {args.rounds}")
-    print(f"Max steps:   {args.max_steps}")
-    print(f"Output:      {args.output_dir}")
+    print(f"Topologies: {args.topologies}")
+    print(f"Values: {args.values}")
+    print(f"Locations: {args.locations}")
+    print(f"Model: {args.model}")
+    print(f"Rounds: {args.rounds}")
+    print(f"Max steps: {args.max_steps}")
+    print(f"Output: {args.output_dir}")
     if args.baseline_dir:
-        print(f"Baseline:    {args.baseline_dir} (reusing existing)")
+        print(f"Baseline: {args.baseline_dir} (reusing existing)")
     print("=" * 60)
 
+    # Count total experiments
+    # baseline (1 unless --baseline-dir supplied) + perturbed (topologies x values x locations)
     n_perturbed = len(args.topologies) * len(args.values) * len(args.locations)
-    n_baseline = 0 if args.baseline_dir else len(args.topologies)
-    print(f"\nTotal runs: {n_baseline} baseline + {n_perturbed} perturbed = {n_baseline + n_perturbed}")
+    n_baseline = 0 if args.baseline_dir else 1
+    print(
+        f"\nTotal runs: {n_baseline} baseline + {n_perturbed} perturbed = {n_baseline + n_perturbed}"
+    )
 
-    # ── Step 1: Baselines ────────────────────────────────────────────────────
-    baseline_dirs: dict[str, str | None] = {}
+    # Step 1: Run baseline (no perturbation), or reuse supplied dir
     if args.baseline_dir:
         print(f"\n▶ Step 1: Reusing existing baseline at {args.baseline_dir}")
-        for topology in args.topologies:
-            baseline_dirs[topology] = args.baseline_dir
+        baseline_dir: str | None = args.baseline_dir
     else:
-        print("\n▶ Step 1: Running baseline (no perturbation) per topology...")
-        for topology in args.topologies:
-            print(f"\n  • Baseline topology: {topology}")
-            baseline_cmd = build_hydra_command(
-                scenario=args.scenario,
-                evaluation=args.evaluation,
-                model=args.model,
-                topology=topology,
-                perturbation_enabled=False,
-                num_rounds=args.rounds,
-                max_steps=args.max_steps,
-            )
-            baseline_dirs[topology] = run_experiment(baseline_cmd, dry_run=args.dry_run)
+        print("\n▶ Step 1: Running baseline (no perturbation)...")
+        baseline_cmd = build_hydra_command(
+            model=args.model,
+            perturbation_enabled=False,
+            num_rounds=args.rounds,
+            max_steps=args.max_steps,
+        )
+        baseline_dir = run_experiment(baseline_cmd, dry_run=args.dry_run)
 
-    # ── Step 2: Perturbed runs ────────────────────────────────────────────────
+    # Step 2: Run perturbed conditions
     print("\n▶ Step 2: Running perturbed conditions...")
     perturbed_runs: list[dict] = []
 
     for topology in args.topologies:
         for value in args.values:
-            # value_type = VALUE_TYPE_MAP.get(value, "power")
+            value_type = VALUE_TYPE_MAP.get(value, "power")
             for location in args.locations:
                 agent_name = f"Agent_{location}"
                 label = f"{topology}__{value}__agent{location}"
 
                 cmd = build_hydra_command(
-                    scenario=args.scenario,
-                    evaluation=args.evaluation,
                     model=args.model,
                     topology=topology,
                     target_value=value,
-                    target_value_type=value,
+                    target_value_type=value_type,
                     perturbed_index=location,
                     perturbation_enabled=True,
                     num_rounds=args.rounds,
@@ -326,32 +338,31 @@ def main() -> None:
                 )
                 output = run_experiment(cmd, dry_run=args.dry_run)
 
-                perturbed_runs.append({
-                    "label": label,
-                    "topology": topology,
-                    "target_value": value,
-                    "target_value_type": value,
-                    "perturbed_index": location,
-                    "target_agent": agent_name,
-                    "output_dir": output,
-                })
+                perturbed_runs.append(
+                    {
+                        "label": label,
+                        "topology": topology,
+                        "target_value": value,
+                        "target_value_type": value_type,
+                        "perturbed_index": location,
+                        "target_agent": agent_name,
+                        "output_dir": output,
+                    }
+                )
 
     if args.dry_run:
         print("\n[DRY RUN] Skipping metrics computation.")
         return
 
-    # ── Step 3: Compute metrics and print results ─────────────────────────────
-    print("\n▶ Step 3: Computing ValueFlow metrics and printing results...")
+    # Step 3: Compute metrics
+    print("\n▶ Step 3: Computing ValueFlow metrics...")
 
-    if any(baseline_dirs.get(topology) is None for topology in args.topologies):
-        logger.error("One or more baseline runs failed — cannot compute metrics for those topologies.")
+    if baseline_dir is None:
+        logger.error("Baseline run failed — cannot compute metrics.")
+        return
 
     all_metrics: list[dict] = []
     for run in perturbed_runs:
-        baseline_dir = baseline_dirs.get(run["topology"])
-        if baseline_dir is None:
-            logger.warning(f"Skipping {run['label']}: baseline for topology {run['topology']} failed")
-            continue
         if run["output_dir"] is None:
             logger.warning(f"Skipping {run['label']}: run failed")
             continue
@@ -369,7 +380,7 @@ def main() -> None:
             metrics["topology"] = run["topology"]
             all_metrics.append(metrics)
 
-    # ── Step 4: Save summary ──────────────────────────────────────────────────
+    # Step 4: Save summary
     print("\n▶ Step 4: Saving experiment summary...")
     summary_path = Path(args.output_dir) / "experiment_summary.json"
     summary_path.parent.mkdir(parents=True, exist_ok=True)
@@ -377,9 +388,8 @@ def main() -> None:
     summary = {
         "study": "valueflow",
         "model": args.model,
-        "evaluation": args.evaluation,
-        "num_runs": len(baseline_dirs) + len(perturbed_runs),
-        "baseline_dirs": baseline_dirs,
+        "num_runs": 1 + len(perturbed_runs),
+        "baseline_dir": baseline_dir,
         "conditions": [
             {
                 "label": m.get("label", ""),
@@ -399,13 +409,12 @@ def main() -> None:
     print(f"Experiment complete! Summary: {summary_path}")
     print(f"{'='*60}")
 
-    # Final headline numbers
+    # Print key results
     if all_metrics:
-        print("\n📊 Key Results (SS on target value):")
+        print("\n📊 Key Results:")
         for m in all_metrics:
             print(
-                f"  {m.get('label', '?')}: "
-                f"SS({m['target_value']}) = {m['target_value_ss']:.3f}"
+                f"  {m.get('label', '?')}: " f"SS({m['target_value']}) = {m['target_value_ss']:.3f}"
             )
 
 

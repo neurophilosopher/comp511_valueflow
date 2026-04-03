@@ -4,8 +4,7 @@
 # propagation of value perturbations in multi-agent LLM systems.
 #
 # Key concepts:
-#   - Agents arranged in a topology (chain, ring, undirected_cycle, small_world,
-#     community, core_periphery, core_periphery_bidirectional, star, fully_connected)
+#   - Agents arranged in a DAG topology (chain, ring, star, fully_connected)
 #   - One agent is "perturbed" — its persona is shifted to strongly endorse a target value
 #   - All agents answer Schwartz Value Survey questions at each checkpoint
 #   - Metrics: β-susceptibility (agent-level) and System Susceptibility (SS)
@@ -13,7 +12,7 @@
 # Usage:
 #   uv run python run_experiment.py scenario=valueflow
 #   uv run python run_experiment.py scenario=valueflow scenario.topology.type=ring
-#   uv run python run_experiment.py scenario=valueflow scenario.perturbation.target_value=social_power
+#   uv run python run_experiment.py scenario=valueflow scenario.perturbation.target_value=power
 
 name: valueflow
 description: "ValueFlow: Measuring value perturbation propagation in multi-agent LLM systems"
@@ -52,15 +51,11 @@ shared_memories:
 # Defines who observes whom. Each entry maps an agent name to the list
 # of agent names whose outputs it can see.
 #
-# Supported topologies: chain, ring, undirected_cycle, small_world,
-# community, core_periphery, core_periphery_bidirectional, star, fully_connected, custom
-# For chain/ring/undirected_cycle/star/fully_connected, the graph is auto-generated from
-# the agent list. `small_world` uses local cycle neighbors plus a few fixed long-range
-# shortcuts. `community` uses exactly 15 agents arranged as 3 clusters of 5, with one
-# bridge agent per cluster. The core-periphery variants use exactly 15 agents arranged
-# as a 5-node core and 10 peripheral agents. For custom, specify adjacency explicitly.
+# Supported topologies: chain, ring, star, fully_connected, custom
+# For chain/ring/star/fully_connected, the graph is auto-generated from
+# the agent list. For custom, specify adjacency explicitly.
 topology:
-  type: chain           # chain | ring | undirected_cycle | small_world | community | core_periphery | core_periphery_bidirectional | star | fully_connected | custom
+  type: chain           # chain | ring | star | fully_connected | custom
   # For custom topology, specify adjacency:
   # custom_adjacency:
   #   Agent_0: [Agent_1]
@@ -74,7 +69,7 @@ perturbation:
   # Which agent index (0-based) to perturb. null = no perturbation (baseline).
   perturbed_agent_index: 0
   # Target Schwartz value to amplify in the perturbed agent
-  target_value: social_power
+  target_value: power
   # Target value type (higher-order category)
   target_value_type: power
   # Perturbation strength: how strongly the persona is shifted (1-10)
@@ -93,6 +88,8 @@ perturbation:
 # Number of rounds of multi-agent interaction
 interaction:
   num_rounds: 3
+  # Run value probes only after selected rounds. Empty or omitted probes every round.
+  probe_steps: [1, 3]
   # Discussion prompt for each round
   round_prompt: |
     Round {round_num} of the discussion. Share your perspective on what

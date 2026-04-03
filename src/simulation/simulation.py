@@ -82,6 +82,7 @@ class Simulation(simulation_lib.Simulation):
         self._checkpoints_path: str | None = None
         self._checkpoint_counter = 0
         self._get_state_callback: Callable[[dict[str, Any]], None] | None = None
+        self._probe_steps = self._extract_probe_steps()
 
         # Shared memory bank for game masters
         self.game_master_memory_bank = associative_memory.AssociativeMemoryBank(
@@ -90,6 +91,26 @@ class Simulation(simulation_lib.Simulation):
 
         # Build instances from config
         self._build_from_config()
+
+    def _extract_probe_steps(self) -> set[int] | None:
+        """Get configured probe steps from Hydra config, if provided."""
+        if self._hydra_config is None:
+            return None
+
+        scenario_config = getattr(self._hydra_config, "scenario", None)
+        if scenario_config is None:
+            return None
+
+        interaction_config = getattr(scenario_config, "interaction", None)
+        if interaction_config is None:
+            return None
+
+        probe_steps_value = getattr(interaction_config, "probe_steps", None)
+        if probe_steps_value is None:
+            return None
+
+        probe_steps = {int(step) for step in probe_steps_value}
+        return probe_steps or None
 
     def _build_from_config(self) -> None:
         """Build entities and game masters from configuration."""
@@ -412,8 +433,13 @@ class Simulation(simulation_lib.Simulation):
         # Run probes at checkpoint if probe_runner is configured
         if self._probe_runner:
             try:
-                self._probe_runner.run_probes(self.entities, step)
-                logger.debug(f"Step {step}: Ran probes on {len(self.entities)} entities")
+                should_probe = self._probe_steps is None or step in self._probe_steps
+
+                if should_probe:
+                    self._probe_runner.run_probes(self.entities, step)
+                    logger.debug(f"Step {step}: Ran probes on {len(self.entities)} entities")
+                else:
+                    logger.debug("Step %s: Skipped probes (probe_steps=%s)", step, self._probe_steps)
             except Exception as e:
                 logger.warning(f"Step {step}: Failed to run probes: {e}")
 

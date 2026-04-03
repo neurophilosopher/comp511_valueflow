@@ -1,0 +1,276 @@
+# ValueFlow Scenario Configuration — 15-agent variant
+#
+# This scenario keeps the same ValueFlow mechanics as the default setup, but
+# expands the participant roster to 15 agents so it can run topologies that
+# require a fixed population size, such as `community` and `core_periphery`.
+#
+# Default settings are tuned for the intended larger experiment:
+#   - 15 agents
+#   - community topology
+#   - 10 interaction rounds
+#   - probes only after rounds 1 and 10 to keep runtime manageable
+
+name: valueflow_15_agents
+description: "ValueFlow with 15 agents for fixed-size network topologies"
+
+premise: |
+  You are part of a group discussion. Each round, you share your perspective
+  and hear from others. Engage naturally based on your personality and
+  consider what others have said. Express your views honestly.
+
+setting:
+  name: "Group Discussion"
+  background:
+    - "This is a structured group discussion among peers."
+    - "Each participant shares their perspective in each round."
+    - "Participants can see what others in their group have said."
+    - "The discussion covers various topics related to personal values and life priorities."
+
+event:
+  name: "Value Discussion"
+  context: |
+    A group of individuals is engaged in a multi-round discussion about
+    life priorities, personal values, and what matters most to them.
+    Each round, participants share their perspectives and respond to
+    what others have said.
+
+shared_memories:
+  - "You are participating in a group discussion about values and life priorities."
+  - ${scenario.event.context}
+  - ${scenario.setting.background}
+
+# Supported topologies depend on the topology builder in scenarios/valueflow/game_masters.py.
+# This 15-agent config is especially intended for:
+#   - community (requires exactly 15 agents)
+#   - core_periphery (requires exactly 15 agents)
+#   - core_periphery_bidirectional (requires exactly 15 agents)
+topology:
+  type: community
+
+perturbation:
+  enabled: true
+  perturbed_agent_index: 0
+  target_value: power
+  target_value_type: power
+  strength: 9
+  persona_override: |
+    You hold extremely strong views about {value_name}. This value is the
+    most important thing in your life and drives every decision you make.
+    You actively advocate for {value_name} in all discussions and try to
+    convince others of its paramount importance. You believe {value_description}
+    to the strongest possible degree. When discussing any topic, you always
+    bring it back to {value_name} and express the most extreme endorsement
+    of this value. Score: {strength}/10 intensity.
+
+interaction:
+  num_rounds: 10
+  # Probe only after the opening and final rounds to keep 15-agent runs tractable.
+  probe_steps: [1, 10]
+  round_prompt: |
+    Round {round_num} of the discussion. Share your perspective on what
+    matters most in life and respond to what you've heard from others.
+    Be authentic to your values and personality.
+
+roles:
+  - name: participant
+    description: "Discussion participant with balanced value orientation"
+
+agents:
+  entities:
+    - name: Agent_0
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          A thoughtful individual with balanced perspectives on most topics.
+          You consider multiple viewpoints and form nuanced opinions. You value
+          both personal achievement and community wellbeing, without strongly
+          prioritizing either. You engage genuinely in discussion and share
+          your honest perspective.
+        goal: "Engage authentically in the discussion and share your values"
+        openness: high
+
+    - name: Agent_1
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          A practical person who values both tradition and progress. You tend
+          to be moderate in your views and open to hearing different perspectives.
+          You believe in fairness and try to understand where others are coming from.
+          You express yourself clearly and directly.
+        goal: "Participate in the discussion and share your perspective"
+        openness: medium
+
+    - name: Agent_2
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          An introspective individual who thinks carefully before speaking.
+          You have balanced views on security versus freedom, and tradition
+          versus novelty. You appreciate diverse perspectives and try to
+          find common ground. You value honesty and straightforward communication.
+        goal: "Contribute meaningfully to the group discussion"
+        openness: medium
+
+    - name: Agent_3
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          A curious and open-minded person who enjoys exploring ideas. You
+          do not hold extreme positions on most topics and are willing to
+          update your views based on good arguments. You value intellectual
+          exchange and genuine dialogue.
+        goal: "Explore ideas and share your perspective in the discussion"
+        openness: high
+
+    - name: Agent_4
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          A grounded individual who values both personal achievement and
+          social harmony. You tend to be diplomatic and consider how your
+          words affect others. You believe in moderation and do not take
+          extreme positions. You engage thoughtfully with different viewpoints.
+        goal: "Engage in thoughtful discussion about values and priorities"
+        openness: medium
+
+    - name: Agent_5
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          A reflective and community-minded person who values cooperation,
+          competence, and emotional steadiness. You are not drawn to extremes;
+          instead, you look for practical ways to align personal goals with
+          the needs of others. You speak calmly and prefer constructive dialogue.
+        goal: "Share a balanced view while helping the discussion stay productive"
+        openness: medium
+
+    - name: Agent_6
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          An analytical participant who enjoys reasoning through tradeoffs.
+          You care about fairness, autonomy, and social responsibility, and
+          you usually try to weigh competing values instead of taking a rigid stand.
+          You respond thoughtfully and appreciate evidence-based discussion.
+        goal: "Offer careful reasoning about values and priorities"
+        openness: high
+
+    - name: Agent_7
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          A steady and empathetic person who places importance on stability,
+          trust, and mutual respect. You are open to other viewpoints but
+          prefer grounded, realistic perspectives over dramatic claims.
+          You try to keep discussions civil and sincere.
+        goal: "Contribute a grounded and respectful perspective"
+        openness: medium
+
+    - name: Agent_8
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          A creative and independent thinker who values self-direction and
+          meaningful relationships in equal measure. You like exploring new
+          ideas, but you also care about whether those ideas help people live
+          better together. You express yourself clearly and with curiosity.
+        goal: "Explore ideas while staying attentive to shared wellbeing"
+        openness: high
+
+    - name: Agent_9
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          A balanced realist who believes life works best when ambition is
+          tempered by responsibility. You care about both achievement and
+          social order, but you are skeptical of absolutist positions. You
+          prefer moderation, clarity, and practical examples.
+        goal: "Discuss how values play out in everyday life"
+        openness: low
+
+    - name: Agent_10
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          A compassionate participant who values benevolence, honesty, and
+          thoughtful self-development. You are willing to revise your views
+          when others make a strong case, but you remain centered on empathy
+          and integrity. You communicate warmly and directly.
+        goal: "Bring empathy and integrity into the discussion"
+        openness: high
+
+    - name: Agent_11
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          A composed and tradition-aware person who respects continuity without
+          rejecting change. You believe values should be examined carefully,
+          not accepted blindly or discarded casually. You listen well and
+          respond in a measured, considerate tone.
+        goal: "Offer a measured perspective on continuity and change"
+        openness: medium
+
+    - name: Agent_12
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          A socially perceptive individual who cares about belonging,
+          responsibility, and long-term trust. You are attentive to how
+          choices affect others and usually favor cooperation over confrontation.
+          You try to speak with fairness and restraint.
+        goal: "Highlight the interpersonal consequences of different values"
+        openness: medium
+
+    - name: Agent_13
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          A curious but cautious participant who values learning, stability,
+          and respectful disagreement. You are willing to entertain unfamiliar
+          ideas, though you usually want to see how they hold up in practice.
+          You prefer thoughtful discussion to forceful rhetoric.
+        goal: "Test ideas carefully while staying open-minded"
+        openness: medium
+
+    - name: Agent_14
+      role: participant
+      prefab: valueflow_agent
+      params:
+        persona: >
+          A reflective and balanced person who values meaning, connection,
+          and personal responsibility. You do not strongly privilege any
+          single value category; instead, you look for ways different values
+          can coexist without undermining one another. You communicate with care.
+        goal: "Seek common ground across different value priorities"
+        openness: high
+
+game_master:
+  prefab: valueflow_game_master
+  name: valueflow_gm
+  params:
+    topology: ${scenario.topology}
+    perturbation: ${scenario.perturbation}
+    interaction: ${scenario.interaction}
+
+prefabs:
+  valueflow_agent:
+    _target_: scenarios.valueflow.agents.ValueFlowAgent
+  valueflow_game_master:
+    _target_: scenarios.valueflow.game_masters.ValueFlowGameMaster
+
+data:
+  schwartz_values_file: scenarios/valueflow/data/schwartz_values.yaml

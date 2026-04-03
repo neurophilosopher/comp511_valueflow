@@ -110,7 +110,7 @@ def print_config_summary(config: DictConfig) -> None:
 def _create_simulator(config: DictConfig) -> BaseSimulator:
     """Return the appropriate simulator for the given scenario config."""
     scenario_name = config.scenario.get("name", "")
-    if scenario_name == "valueflow":
+    if str(scenario_name).startswith("valueflow"):
         from scenarios.valueflow.simulator import ValueFlowSimulator
 
         return ValueFlowSimulator(config)

@@ -245,7 +245,6 @@ class ProbeRunner:
             List of result dicts.
         """
         results = []
-
         with ThreadPoolExecutor() as executor:
             futures = {}
             for agent in agents:
