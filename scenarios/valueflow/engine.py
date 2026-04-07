@@ -1,4 +1,4 @@
-"""ValueFlow simulation engine with DAG topology-aware observation delivery."""
+"""ValueFlow simulation engine with topology-aware observation delivery."""
 
 from __future__ import annotations
 
@@ -27,8 +27,11 @@ class ValueFlowEngine(engine_lib.Engine):
     - All agents act in parallel within a round
     - Runs for num_rounds total rounds
 
-    Topology graph is built from agent names at run_loop time using the
-    topology config supplied at construction.
+    Probe timing (matches paper §5.3):
+    - Step 0: fired BEFORE any agent acts — true pre-interaction baseline
+    - Step N (e.g. 10): fired AFTER the final round
+
+    Set probe_steps: [0, 10] in the scenario YAML to get both checkpoints.
     """
 
     def __init__(
@@ -36,14 +39,6 @@ class ValueFlowEngine(engine_lib.Engine):
         topology_config: dict[str, Any],
         interaction_config: dict[str, Any],
     ) -> None:
-        """Initialize the engine.
-
-        Args:
-            topology_config: Topology config dict with 'type' and optional
-                'custom_adjacency' keys.
-            interaction_config: Interaction config dict with 'num_rounds' and
-                optional 'round_prompt' keys.
-        """
         self._topology_config = topology_config
         self._interaction_config = interaction_config
         self._topology_graph: dict[str, list[str]] = {}
@@ -93,9 +88,13 @@ class ValueFlowEngine(engine_lib.Engine):
     ) -> None:
         """Run the ValueFlow simulation loop.
 
-        Each round all agents act in parallel. Each agent receives observations
-        from only the neighbors specified by the topology graph (built from the
-        previous round's outputs).
+        Probe timing:
+          checkpoint_callback(0) is called BEFORE round 1 — agents have
+          observed the premise but have NOT yet acted. This is the correct
+          pre-interaction probe point described in the paper (§5.3).
+
+          checkpoint_callback(round_num) is called AFTER each round completes.
+          Use probe_steps: [0, 10] in the YAML to capture pre- and post-state.
 
         Args:
             game_masters: List of game masters (first one used for GM name).
@@ -104,7 +103,8 @@ class ValueFlowEngine(engine_lib.Engine):
             max_steps: Ignored — num_rounds from interaction_config is used.
             verbose: Print Concordia-compatible event output.
             log: List to append log entries to.
-            checkpoint_callback: Called after each round with the round number.
+            checkpoint_callback: Called at step 0 (pre-interaction) and after
+                each round with the round number.
         """
         if not entities:
             raise ValueError("No entities provided.")
@@ -133,10 +133,16 @@ class ValueFlowEngine(engine_lib.Engine):
             agent_names,
         )
 
-        # Initial premise
+        # Deliver premise to all agents (before any acting)
         if premise:
             for entity in entities:
                 entity.observe(premise)
+
+        # ── Step 0: pre-interaction probe (paper §5.3) ──────────────────────
+        # Agents have seen the premise but have NOT acted yet.
+        # This is the true baseline the paper describes.
+        if checkpoint_callback is not None:
+            checkpoint_callback(0)
 
         previous_outputs: dict[str, str] = {}
 
@@ -181,7 +187,6 @@ class ValueFlowEngine(engine_lib.Engine):
             # Update previous outputs (new dict — does not affect captured _prev)
             previous_outputs = {name: result["raw_action"] for name, result in step_results.items()}
 
-            # Print sequentially in Concordia-compatible format
             if verbose:
                 print(termcolor.colored("Terminate? No", _PRINT_COLOR))
                 for entity in entities:

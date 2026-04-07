@@ -3,29 +3,35 @@
 
 Orchestrates the full ValueFlow experimental pipeline:
 1. Run baseline simulation (no perturbation)
-2. Run perturbed simulation(s)
+2. Run perturbed simulation
 3. Compute β-susceptibility and System Susceptibility (SS)
 4. Print per-agent value scores and SS to terminal
-5. Save metrics and generate summary
+5. Save metrics JSON + append a run record to the cumulative analysis HTML
+
+The analysis HTML (analysis.html in --output-dir) accumulates one record
+per run pair. Open it at any time to see all completed pairs with their
+raw SS values. Once you have enough pairs, it will also show mean ± std
+across pairs for each value type.
 
 Usage:
-    # Run a single perturbation experiment (chain topology, power)
-    uv run python scripts/run_valueflow.py
+    # Single pair, small-world topology (the typical use case right now)
+    uv run python scripts/run_valueflow.py \\
+        --scenario valueflow_15_agents \\
+        --topologies small_world \\
+        --rounds 10
 
     # Sweep topologies
-    uv run python scripts/run_valueflow.py --topologies chain ring star fully_connected
-
-    # Sweep values
-    uv run python scripts/run_valueflow.py --values power ambitious helpful
-
-    # Sweep perturbation locations in chain
-    uv run python scripts/run_valueflow.py --locations 0 2 4
+    uv run python scripts/run_valueflow.py \\
+        --scenario valueflow_15_agents \\
+        --topologies community small_world \\
+        --rounds 10
 
     # Dry run (print commands without executing)
     uv run python scripts/run_valueflow.py --dry-run
 
-    # Use the 21-question Schwartz evaluation
-    uv run python scripts/run_valueflow.py --evaluation valueflow_schwartz21
+    # Reuse an existing baseline
+    uv run python scripts/run_valueflow.py \\
+        --baseline-dir outputs/<existing-baseline-timestamp>
 """
 
 from __future__ import annotations
@@ -45,8 +51,7 @@ DEFAULT_TOPOLOGIES = ["chain"]
 DEFAULT_VALUES = ["power"]
 DEFAULT_LOCATIONS = [0]
 DEFAULT_MODEL = "gpt4o"
-DEFAULT_ROUNDS = 3
-DEFAULT_MAX_STEPS = 20
+DEFAULT_ROUNDS = 3          # overridden per scenario in the YAML; this is just the CLI default
 DEFAULT_EVALUATION = "valueflow_schwartz21"
 DEFAULT_SCENARIO = "valueflow"
 
@@ -61,10 +66,15 @@ def build_hydra_command(
     perturbed_index: int = 0,
     perturbation_enabled: bool = True,
     num_rounds: int = DEFAULT_ROUNDS,
-    max_steps: int = DEFAULT_MAX_STEPS,
     extra_overrides: list[str] | None = None,
 ) -> list[str]:
-    """Build the Hydra CLI command for a single run."""
+    """Build the Hydra CLI command for a single run.
+
+    NOTE: max_steps is intentionally omitted here. ValueFlowEngine
+    ignores max_steps entirely — it runs for exactly num_rounds rounds
+    as set by scenario.interaction.num_rounds. Passing a max_steps
+    override would have no effect and would be misleading.
+    """
     cmd = [
         os.path.expanduser(sys.executable),
         "run_experiment.py",
@@ -78,42 +88,10 @@ def build_hydra_command(
         f"scenario.perturbation.target_value_type={target_value_type}",
         f"scenario.perturbation.perturbed_agent_index={perturbed_index}",
         f"scenario.interaction.num_rounds={num_rounds}",
-        f"simulation.execution.max_steps={max_steps}",
     ]
     if extra_overrides:
         cmd.extend(extra_overrides)
     return cmd
-
-
-# Map value names to their Schwartz type
-# VALUE_TYPE_MAP = {
-#     "social_power": "power",
-#     "authority": "power",
-#     "wealth": "power",
-#     "successful": "achievement",
-#     "ambitious": "achievement",
-#     "influential": "achievement",
-#     "pleasure": "hedonism",
-#     "enjoying_life": "hedonism",
-#     "daring": "stimulation",
-#     "creativity": "self_direction",
-#     "freedom": "self_direction",
-#     "broadminded": "universalism",
-#     "equality": "universalism",
-#     "social_justice": "universalism",
-#     "helpful": "benevolence",
-#     "honest": "benevolence",
-#     "loyal": "benevolence",
-#     "devout": "tradition",
-#     "respect_for_tradition": "tradition",
-#     "humble": "tradition",
-#     "politeness": "conformity",
-#     "obedient": "conformity",
-#     "self_discipline": "conformity",
-#     "family_security": "security",
-#     "social_order": "security",
-#     "national_security": "security",
-# }
 
 
 def run_experiment(cmd: list[str], dry_run: bool = False) -> str | None:
@@ -155,6 +133,7 @@ def compute_metrics_from_runs(
     """Compute ValueFlow metrics and print results to terminal."""
     from scenarios.valueflow.metrics import (
         RunResults,
+        build_analysis_record,
         build_html_results_block,
         compute_all_metrics,
         print_ss_results,
@@ -206,15 +185,331 @@ def compute_metrics_from_runs(
         except Exception as e:
             logger.warning(f"Failed to append SS HTML: {e}")
 
+    # Attach raw dirs to metrics for analysis record
+    metrics["_baseline_dir"] = baseline_dir
+    metrics["_perturbed_dir"] = perturbed_dir
     return metrics
 
+
+# ── Analysis HTML ─────────────────────────────────────────────────────────────
+
+def load_analysis_records(analysis_path: Path) -> list[dict]:
+    """Load existing run records from the JSON sidecar next to analysis.html."""
+    sidecar = analysis_path.with_suffix(".json")
+    if not sidecar.exists():
+        return []
+    try:
+        with sidecar.open() as f:
+            return json.load(f)
+    except Exception as e:
+        logger.warning("Could not load analysis records from %s: %s", sidecar, e)
+        return []
+
+
+def save_analysis_records(analysis_path: Path, records: list[dict]) -> None:
+    """Save run records to the JSON sidecar."""
+    sidecar = analysis_path.with_suffix(".json")
+    with sidecar.open("w") as f:
+        json.dump(records, f, indent=2)
+
+
+def build_analysis_html(records: list[dict]) -> str:
+    """Build a self-contained HTML page summarising all completed run pairs.
+
+    Each record = one baseline + perturbed pair. The page shows:
+    - A table of per-run SS values for each Schwartz value type
+    - Mean ± std across all recorded pairs (grows as you add more)
+    - Δpert for each pair
+    - Links to the baseline and perturbed run output directories
+    """
+    from scenarios.valueflow.metrics import SCHWARTZ_VALUE_TYPES
+    import math
+
+    n = len(records)
+
+    # ── Aggregate SS per value type ────────────────────────────────────────
+    ss_by_vt: dict[str, list[float]] = {vt: [] for vt in SCHWARTZ_VALUE_TYPES}
+    for rec in records:
+        ss = rec.get("system_susceptibility", {})
+        for vt in SCHWARTZ_VALUE_TYPES:
+            if vt in ss:
+                ss_by_vt[vt].append(ss[vt])
+
+    def _mean(vals: list[float]) -> float:
+        return sum(vals) / len(vals) if vals else float("nan")
+
+    def _std(vals: list[float]) -> float:
+        if len(vals) < 2:
+            return float("nan")
+        m = _mean(vals)
+        return math.sqrt(sum((v - m) ** 2 for v in vals) / (len(vals) - 1))
+
+    # ── Build topology/agent info string ──────────────────────────────────
+    topologies = sorted({r.get("topology", "?") for r in records})
+    agents = sorted({r.get("target_agent", "?") for r in records})
+
+    # ── Per-run rows ───────────────────────────────────────────────────────
+    run_rows = ""
+    for i, rec in enumerate(records):
+        ss = rec.get("system_susceptibility", {})
+        dp = rec.get("delta_pert", float("nan"))
+        label = rec.get("label", f"run_{i+1}")
+        topo = rec.get("topology", "?")
+        agent = rec.get("target_agent", "?")
+        bl_dir = rec.get("baseline_dir", "")
+        pt_dir = rec.get("perturbed_dir", "")
+
+        cells = ""
+        for vt in SCHWARTZ_VALUE_TYPES:
+            val = ss.get(vt, float("nan"))
+            target_vt = rec.get("target_value", "")
+            highlight = ' class="target-vt"' if vt == target_vt else ""
+            val_str = f"{val:.3f}" if not math.isnan(val) else "—"
+            cells += f"<td{highlight}>{val_str}</td>"
+
+        run_rows += f"""
+        <tr>
+          <td class="run-label">{i+1}</td>
+          <td>{topo}</td>
+          <td>{agent.replace('Agent_', 'A')}</td>
+          <td class="dp">{"{:.3f}".format(dp) if not math.isnan(dp) else "—"}</td>
+          {cells}
+          <td class="dir-cell"><a href="{bl_dir}" title="{bl_dir}">baseline</a></td>
+          <td class="dir-cell"><a href="{pt_dir}" title="{pt_dir}">perturbed</a></td>
+        </tr>"""
+
+    # ── Summary rows ────────────────────────────────────────────────────────
+    mean_row = "<tr class='mean-row'><td colspan='4'>Mean</td>"
+    std_row = "<tr class='std-row'><td colspan='4'>Std</td>"
+    for vt in SCHWARTZ_VALUE_TYPES:
+        vals = ss_by_vt[vt]
+        m = _mean(vals)
+        s = _std(vals)
+        mean_row += f"<td>{m:.3f}</td>" if not math.isnan(m) else "<td>—</td>"
+        std_row += f"<td>±{s:.3f}</td>" if not math.isnan(s) else "<td>—</td>"
+    mean_row += "<td colspan='2'></td></tr>"
+    std_row += "<td colspan='2'></td></tr>"
+
+    # ── Value type header cells ─────────────────────────────────────────────
+    vt_headers = "".join(f"<th>{vt}</th>" for vt in SCHWARTZ_VALUE_TYPES)
+
+    status_badge = (
+        f'<span class="badge badge-single">1 pair recorded — add more to get mean ± std</span>'
+        if n == 1 else
+        f'<span class="badge badge-multi">{n} pairs — mean ± std available</span>'
+    )
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ValueFlow Analysis — {", ".join(topologies)}</title>
+  <style>
+    :root {{
+      --bg: #f7f5f0;
+      --panel: #ffffff;
+      --ink: #1a1a1a;
+      --muted: #6b6b6b;
+      --accent: #c0392b;
+      --accent2: #2471a3;
+      --target-bg: #fef9e7;
+      --target-border: rgba(180,134,22,0.3);
+      --mean-bg: #eaf4fb;
+      --std-bg: #f4f9f4;
+      --border: rgba(0,0,0,0.08);
+    }}
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Georgia", "Times New Roman", serif;
+      padding: 32px 24px 60px;
+    }}
+    .wrap {{ max-width: 1400px; margin: 0 auto; }}
+    h1 {{ font-size: 28px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 6px; }}
+    .subtitle {{ color: var(--muted); font-size: 14px; margin-bottom: 20px; font-style: italic; }}
+    .meta {{ display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; align-items: center; }}
+    .badge {{
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: ui-monospace, monospace;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }}
+    .badge-single {{ background: #fef3cd; color: #856404; border: 1px solid #ffc107; }}
+    .badge-multi  {{ background: #d4edda; color: #155724; border: 1px solid #28a745; }}
+    .chip {{
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: ui-monospace, monospace;
+      background: rgba(0,0,0,0.06);
+      border: 1px solid var(--border);
+    }}
+    .panel {{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      overflow: auto;
+      margin-bottom: 24px;
+    }}
+    table {{
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 13px;
+    }}
+    th {{
+      background: #2c3e50;
+      color: #fff;
+      padding: 9px 10px;
+      text-align: right;
+      white-space: nowrap;
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      letter-spacing: 0.03em;
+    }}
+    th.left {{ text-align: left; }}
+    td {{
+      padding: 7px 10px;
+      text-align: right;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+    }}
+    td.run-label {{
+      font-weight: 700;
+      color: var(--accent2);
+      text-align: center;
+    }}
+    td.dp {{ color: var(--muted); }}
+    td.dir-cell {{ font-size: 11px; }}
+    td.dir-cell a {{ color: var(--accent2); text-decoration: none; }}
+    td.dir-cell a:hover {{ text-decoration: underline; }}
+    tr:hover td {{ background: rgba(0,0,0,0.02); }}
+    td.target-vt, th.target-vt {{
+      background: var(--target-bg) !important;
+      border-left: 2px solid var(--target-border);
+      border-right: 2px solid var(--target-border);
+    }}
+    tr.mean-row td {{
+      background: var(--mean-bg);
+      font-weight: 700;
+      border-top: 2px solid #2471a3;
+      color: #1a5276;
+    }}
+    tr.std-row td {{
+      background: var(--std-bg);
+      color: var(--muted);
+      font-size: 11px;
+      border-bottom: 2px solid var(--border);
+    }}
+    .note {{
+      font-size: 13px;
+      color: var(--muted);
+      font-style: italic;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.02);
+    }}
+    .section-title {{
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      font-family: ui-monospace, monospace;
+    }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ValueFlow Cumulative Analysis</h1>
+    <p class="subtitle">
+      System Susceptibility (SS) per value type, normalized by Δpert. Each row = one baseline+perturbed pair.
+    </p>
+    <div class="meta">
+      {status_badge}
+      {"".join(f'<span class="chip">topology: {t}</span>' for t in topologies)}
+      {"".join(f'<span class="chip">perturbed: {a.replace("Agent_", "A")}</span>' for a in agents)}
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Per-Run SS Results</div>
+      <table>
+        <thead>
+          <tr>
+            <th class="left">#</th>
+            <th class="left">Topology</th>
+            <th class="left">Agent</th>
+            <th>Δpert</th>
+            {vt_headers}
+            <th>Baseline dir</th>
+            <th>Perturbed dir</th>
+          </tr>
+        </thead>
+        <tbody>
+          {run_rows}
+          {mean_row if n >= 2 else ""}
+          {std_row if n >= 2 else ""}
+        </tbody>
+      </table>
+      <p class="note">
+        SS = mean |β_i| / Δpert across non-perturbed agents (Eq. 1, §3.4).
+        Highlighted columns = perturbed value type.
+        Mean ± std rows appear once you have ≥ 2 pairs.
+      </p>
+    </div>
+  </div>
+</body>
+</html>"""
+
+
+def append_run_to_analysis(
+    analysis_path: Path,
+    metrics: dict,
+    topology: str,
+    perturbed_agent: str,
+    run_label: str,
+    baseline_dir: str,
+    perturbed_dir: str,
+) -> None:
+    """Append one run pair's result to the cumulative analysis HTML."""
+    from scenarios.valueflow.metrics import build_analysis_record
+
+    records = load_analysis_records(analysis_path)
+    record = build_analysis_record(
+        metrics=metrics,
+        topology=topology,
+        perturbed_agent=perturbed_agent,
+        run_label=run_label,
+        baseline_dir=baseline_dir,
+        perturbed_dir=perturbed_dir,
+    )
+    records.append(record)
+    save_analysis_records(analysis_path, records)
+
+    # Rebuild and overwrite the HTML
+    html = build_analysis_html(records)
+    analysis_path.parent.mkdir(parents=True, exist_ok=True)
+    analysis_path.write_text(html, encoding="utf-8")
+    print(f"\n📊 Analysis HTML updated: {analysis_path}  ({len(records)} pair(s) recorded)")
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
     """Run the ValueFlow experiment pipeline."""
     parser = argparse.ArgumentParser(description="ValueFlow experiment runner")
     parser.add_argument(
         "--scenario", default=DEFAULT_SCENARIO,
-        help="Scenario config name",
+        help="Scenario config name (e.g. valueflow_15_agents)",
     )
     parser.add_argument(
         "--topologies", nargs="+", default=DEFAULT_TOPOLOGIES,
@@ -234,11 +529,10 @@ def main() -> None:
     )
     parser.add_argument(
         "--rounds", type=int, default=DEFAULT_ROUNDS,
-        help="Number of interaction rounds",
-    )
-    parser.add_argument(
-        "--max-steps", type=int, default=DEFAULT_MAX_STEPS,
-        help="Maximum simulation steps",
+        help=(
+            "Number of interaction rounds. For valueflow_15_agents this is "
+            "already set to 10 in the YAML; only pass this to override it."
+        ),
     )
     parser.add_argument(
         "--evaluation", default=DEFAULT_EVALUATION,
@@ -250,7 +544,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--output-dir", default="experiments/valueflow/results",
-        help="Base output directory for metrics",
+        help="Base output directory for metrics and analysis HTML",
     )
     parser.add_argument(
         "--baseline-dir", default=None,
@@ -270,7 +564,6 @@ def main() -> None:
     print(f"Model:       {args.model}")
     print(f"Evaluation:  {args.evaluation}")
     print(f"Rounds:      {args.rounds}")
-    print(f"Max steps:   {args.max_steps}")
     print(f"Output:      {args.output_dir}")
     if args.baseline_dir:
         print(f"Baseline:    {args.baseline_dir} (reusing existing)")
@@ -279,6 +572,8 @@ def main() -> None:
     n_perturbed = len(args.topologies) * len(args.values) * len(args.locations)
     n_baseline = 0 if args.baseline_dir else len(args.topologies)
     print(f"\nTotal runs: {n_baseline} baseline + {n_perturbed} perturbed = {n_baseline + n_perturbed}")
+
+    analysis_path = Path(args.output_dir) / "analysis.html"
 
     # ── Step 1: Baselines ────────────────────────────────────────────────────
     baseline_dirs: dict[str, str | None] = {}
@@ -297,7 +592,6 @@ def main() -> None:
                 topology=topology,
                 perturbation_enabled=False,
                 num_rounds=args.rounds,
-                max_steps=args.max_steps,
             )
             baseline_dirs[topology] = run_experiment(baseline_cmd, dry_run=args.dry_run)
 
@@ -307,7 +601,6 @@ def main() -> None:
 
     for topology in args.topologies:
         for value in args.values:
-            # value_type = VALUE_TYPE_MAP.get(value, "power")
             for location in args.locations:
                 agent_name = f"Agent_{location}"
                 label = f"{topology}__{value}__agent{location}"
@@ -322,7 +615,6 @@ def main() -> None:
                     perturbed_index=location,
                     perturbation_enabled=True,
                     num_rounds=args.rounds,
-                    max_steps=args.max_steps,
                 )
                 output = run_experiment(cmd, dry_run=args.dry_run)
 
@@ -369,7 +661,18 @@ def main() -> None:
             metrics["topology"] = run["topology"]
             all_metrics.append(metrics)
 
-    # ── Step 4: Save summary ──────────────────────────────────────────────────
+            # ── Append to cumulative analysis HTML ────────────────────────
+            append_run_to_analysis(
+                analysis_path=analysis_path,
+                metrics=metrics,
+                topology=run["topology"],
+                perturbed_agent=run["target_agent"],
+                run_label=run["label"],
+                baseline_dir=baseline_dir,
+                perturbed_dir=run["output_dir"],
+            )
+
+    # ── Step 4: Save summary JSON ─────────────────────────────────────────────
     print("\n▶ Step 4: Saving experiment summary...")
     summary_path = Path(args.output_dir) / "experiment_summary.json"
     summary_path.parent.mkdir(parents=True, exist_ok=True)
@@ -386,6 +689,7 @@ def main() -> None:
                 "topology": m.get("topology", ""),
                 "target_value": m["target_value"],
                 "target_agent": m["target_agent"],
+                "delta_pert": m["delta_pert"],
                 "target_value_ss": m["target_value_ss"],
             }
             for m in all_metrics
@@ -396,7 +700,9 @@ def main() -> None:
         json.dump(summary, f, indent=2)
 
     print(f"\n{'='*60}")
-    print(f"Experiment complete! Summary: {summary_path}")
+    print(f"Experiment complete!")
+    print(f"  Summary JSON:  {summary_path}")
+    print(f"  Analysis HTML: {analysis_path}  ← open this in a browser")
     print(f"{'='*60}")
 
     # Final headline numbers
@@ -405,7 +711,8 @@ def main() -> None:
         for m in all_metrics:
             print(
                 f"  {m.get('label', '?')}: "
-                f"SS({m['target_value']}) = {m['target_value_ss']:.3f}"
+                f"SS({m['target_value']}) = {m['target_value_ss']:.3f}  "
+                f"(Δpert = {m['delta_pert']:.3f})"
             )
 
 

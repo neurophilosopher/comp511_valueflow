@@ -109,6 +109,22 @@ def _core_periphery_layout(agent_names: list[str]) -> tuple[int, int, dict[str, 
     return width, height, positions, backgrounds
 
 
+
+def _fully_connected_layout(agent_names: list[str]) -> tuple[int, int, dict[str, dict[str, float]], list[dict[str, Any]]]:
+    """Pentagon layout for 5 fully-connected agents."""
+    width, height = 700, 700
+    cx, cy = width / 2, height / 2
+    radius = 220
+    positions: dict[str, dict[str, float]] = {}
+    n = len(agent_names)
+    for i, name in enumerate(agent_names):
+        angle = (-math.pi / 2) + (2 * math.pi * i / max(n, 1))
+        positions[name] = {"x": cx + radius * math.cos(angle), "y": cy + radius * math.sin(angle)}
+    backgrounds = [
+        {"type": "ellipse", "cx": cx, "cy": cy, "rx": radius + 100, "ry": radius + 100,
+         "fill": "rgba(120, 109, 95, 0.05)", "label": "FULLY CONNECTED", "label_x": cx, "label_y": 55}
+    ]
+    return width, height, positions, backgrounds
 def _topology_layout(agent_names: list[str], topology_type: str) -> tuple[int, int, dict[str, dict[str, float]], list[dict[str, Any]]]:
     if topology_type == "community" and len(agent_names) == 15:
         return _community_layout(agent_names)
@@ -118,6 +134,8 @@ def _topology_layout(agent_names: list[str], topology_type: str) -> tuple[int, i
         return _star_layout(agent_names)
     if topology_type in {"core_periphery", "core_periphery_bidirectional"} and len(agent_names) == 15:
         return _core_periphery_layout(agent_names)
+    if topology_type == "fully_connected":
+        return _fully_connected_layout(agent_names)
     return _ring_layout(agent_names)
 
 

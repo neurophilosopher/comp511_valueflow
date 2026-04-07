@@ -88,12 +88,113 @@ class TestRunLoopBasics:
         entity.act.assert_not_called()
 
 
+class TestStepZeroProbe:
+    """Verify the pre-interaction step-0 probe fires before any agent acts.
+
+    This is the key fix for paper §5.3 compliance: agents must be probed
+    before they have acted, not after round 1.
+    """
+
+    def test_step_zero_callback_called_before_any_act(self) -> None:
+        """checkpoint_callback(0) must be the very first callback call."""
+        engine = _chain_engine(num_rounds=2)
+        entity = _make_entity("A0")
+        callback_calls: list[int] = []
+
+        def tracking_callback(step: int) -> None:
+            # Record act count at the moment of each callback
+            callback_calls.append((step, entity.act.call_count))
+
+        engine.run_loop(
+            game_masters=[_make_gm()],
+            entities=[entity],
+            checkpoint_callback=tracking_callback,
+            premise="",
+        )
+
+        # First callback must be step 0 and act must not have been called yet
+        assert callback_calls[0][0] == 0, "First callback must be step 0"
+        assert callback_calls[0][1] == 0, "Step-0 callback must fire before any act()"
+
+    def test_step_zero_fires_even_with_zero_rounds(self) -> None:
+        """Step-0 probe fires even when num_rounds=0."""
+        engine = _chain_engine(num_rounds=0)
+        entity = _make_entity("A0")
+        calls: list[int] = []
+        engine.run_loop(
+            game_masters=[_make_gm()],
+            entities=[entity],
+            checkpoint_callback=calls.append,
+            premise="",
+        )
+        assert 0 in calls
+
+    def test_callback_sequence_is_0_then_1_through_n(self) -> None:
+        """Full callback sequence: [0, 1, 2, ..., num_rounds]."""
+        n_rounds = 3
+        engine = _chain_engine(num_rounds=n_rounds)
+        calls: list[int] = []
+        engine.run_loop(
+            game_masters=[_make_gm()],
+            entities=[_make_entity("A0")],
+            checkpoint_callback=calls.append,
+            premise="",
+        )
+        assert calls == [0, 1, 2, 3]
+
+    def test_no_observations_delivered_at_step_zero(self) -> None:
+        """Agents have not yet received any neighbor messages at step 0."""
+        engine = _chain_engine(num_rounds=1)
+        a0 = _make_entity("A0", response="A0 output")
+        a1 = _make_entity("A1", response="A1 output")
+
+        step0_a1_observe_count = 0
+
+        def callback(step: int) -> None:
+            nonlocal step0_a1_observe_count
+            if step == 0:
+                # Record how many observe calls have happened on A1 so far
+                # (only the premise observe should have happened, not neighbor obs)
+                step0_a1_observe_count = a1.observe.call_count
+
+        engine.run_loop(
+            game_masters=[_make_gm()],
+            entities=[a0, a1],
+            checkpoint_callback=callback,
+            premise="",  # no premise → 0 observe calls before step-0
+        )
+
+        # With no premise, A1 should have 0 observe calls at step 0
+        assert step0_a1_observe_count == 0
+
+    def test_premise_in_memory_at_step_zero(self) -> None:
+        """Premise IS observed before step-0 probe — consistent with paper."""
+        engine = _chain_engine(num_rounds=1)
+        entity = _make_entity("A0")
+        observe_count_at_step0 = 0
+
+        def callback(step: int) -> None:
+            nonlocal observe_count_at_step0
+            if step == 0:
+                observe_count_at_step0 = entity.observe.call_count
+
+        engine.run_loop(
+            game_masters=[_make_gm()],
+            entities=[entity],
+            checkpoint_callback=callback,
+            premise="Welcome.",
+        )
+
+        # Exactly 1 observe call (the premise) should exist at step 0
+        assert observe_count_at_step0 == 1
+
+
 class TestTopologyFilteredObservations:
     """Verify that agents only observe their topological neighbors' outputs."""
 
-    def test_chain_first_round_no_observations(self) -> None:
-        """In round 1 there are no previous outputs, so no entity.observe calls
-        (aside from the premise, which we leave empty)."""
+    def test_chain_first_round_no_neighbor_observations(self) -> None:
+        """In round 1 there are no previous outputs, so no neighbor observe calls
+        (premise is absent, so no observe at all in round 1)."""
         engine = _chain_engine(num_rounds=1)
         entities = [_make_entity("A0"), _make_entity("A1"), _make_entity("A2")]
         engine.run_loop(game_masters=[_make_gm()], entities=entities, premise="")
@@ -123,10 +224,8 @@ class TestTopologyFilteredObservations:
         agents = [_make_entity(f"A{i}", response=f"A{i} output") for i in range(3)]
         engine.run_loop(game_masters=[_make_gm()], entities=agents, premise="")
 
-        # Each agent should have been observed with the other two's outputs
         for i, agent in enumerate(agents):
             others_output = [f"A{j} output" for j in range(3) if j != i]
-            # At least one observe call should contain the combined neighbor outputs
             obs_calls = [str(c.args[0]) for c in agent.observe.call_args_list]
             assert any(all(o in call for o in others_output) for call in obs_calls)
 
@@ -176,7 +275,8 @@ class TestLoggingAndCallbacks:
         assert entry["Step"] == 1
         assert "narrator" in entry["Summary"]
 
-    def test_checkpoint_callback_called_per_round(self) -> None:
+    def test_checkpoint_callback_called_for_step0_and_all_rounds(self) -> None:
+        """Total callbacks = 1 (step 0) + num_rounds."""
         n_rounds = 4
         engine = _chain_engine(num_rounds=n_rounds)
         calls: list[int] = []
@@ -186,7 +286,7 @@ class TestLoggingAndCallbacks:
             checkpoint_callback=calls.append,
             premise="",
         )
-        assert calls == list(range(1, n_rounds + 1))
+        assert calls == [0, 1, 2, 3, 4]
 
     def test_topology_graph_populated_after_run(self) -> None:
         engine = _chain_engine(num_rounds=1)

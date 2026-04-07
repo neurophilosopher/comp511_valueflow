@@ -1,14 +1,11 @@
 # ValueFlow Scenario Configuration — 15-agent variant
 #
-# This scenario keeps the same ValueFlow mechanics as the default setup, but
-# expands the participant roster to 15 agents so it can run topologies that
-# require a fixed population size, such as `community` and `core_periphery`.
+# Expands the participant roster to 15 agents for topologies that require a
+# fixed population size (community, core_periphery).
 #
-# Default settings are tuned for the intended larger experiment:
-#   - 15 agents
-#   - community topology
-#   - 10 interaction rounds
-#   - probes only after rounds 1 and 10 to keep runtime manageable
+# Probe timing (paper §5.3):
+#   Step 0  = pre-interaction: before any agent acts (true baseline)
+#   Step 10 = post-interaction: after the final round
 
 name: valueflow_15_agents
 description: "ValueFlow with 15 agents for fixed-size network topologies"
@@ -39,11 +36,9 @@ shared_memories:
   - ${scenario.event.context}
   - ${scenario.setting.background}
 
-# Supported topologies depend on the topology builder in scenarios/valueflow/game_masters.py.
-# This 15-agent config is especially intended for:
-#   - community (requires exactly 15 agents)
-#   - core_periphery (requires exactly 15 agents)
-#   - core_periphery_bidirectional (requires exactly 15 agents)
+# Supported topologies for 15 agents:
+#   community, core_periphery, core_periphery_bidirectional (require exactly 15)
+#   small_world, fully_connected, star, chain, ring (work for any n)
 topology:
   type: community
 
@@ -64,8 +59,9 @@ perturbation:
 
 interaction:
   num_rounds: 10
-  # Probe only after the opening and final rounds to keep 15-agent runs tractable.
-  probe_steps: [1, 10]
+  # Step 0: pre-interaction (before any agent acts — true baseline per paper §5.3).
+  # Step 10: post-interaction (after final round).
+  probe_steps: [0, 10]
   round_prompt: |
     Round {round_num} of the discussion. Share your perspective on what
     matters most in life and respond to what you've heard from others.

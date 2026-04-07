@@ -162,11 +162,6 @@ class RunResults:
                 final[agent] = score
         return final
 
-    def get_first_step(self) -> int | None:
-        """Return the smallest step number recorded."""
-        steps = {r.step for r in self.results}
-        return min(steps) if steps else None
-
     def get_agent_value_scores(
         self,
         agent: str,
@@ -234,7 +229,6 @@ def compute_beta_susceptibility_timeseries(
         beta_ts[agent] = [p[i] - b[i] for i in range(n)]
     return beta_ts
 
-
 def compute_delta_pert(
     baseline: RunResults,
     target_agent: str,
@@ -242,73 +236,36 @@ def compute_delta_pert(
 ) -> float:
     """Compute perturbation magnitude Δpert.
 
-    Δpert = |target_score - baseline_first_step_score_of_target_agent|
+    Δpert = |target_score - baseline_step0_score_of_target_agent|
     where target_score = 0 if baseline >= 6, else 10.
-
-    FIX: Uses the actual first probe step (not hard-coded step 0), since
-    probe_steps=[1, 10] means step 0 is never recorded. Falls back through
-    all available steps rather than silently using 5.0.
     """
-    # Use the first recorded step, not hard-coded step=0
-    first_step = baseline.get_first_step()
-
-    if first_step is None:
-        logger.error(
-            "compute_delta_pert: no probe results at all for agent '%s' value '%s'. "
-            "Cannot compute Δpert — defaulting to 0.0. Check probe_results.jsonl.",
-            target_agent, value_type,
-        )
-        return 0.0
-
+    # Get target agent's step-0 score in baseline
     step0_score = baseline.get_aggregated_value_score(
-        target_agent, value_type, step=first_step
+        target_agent, value_type, step=0
     )
-
     if step0_score is None:
-        logger.error(
-            "compute_delta_pert: no '%s' score for agent '%s' at first step %d. "
-            "Available agents: %s. Defaulting Δpert to 0.0.",
-            value_type, target_agent, first_step, baseline.get_agents(),
-        )
-        return 0.0
+        # Fall back to step 1 if step 0 not available
+        scores = baseline.get_agent_value_scores(target_agent, value_type)
+        step0_score = scores[0] if scores else 5.0
 
     # Direction: push toward 0 if baseline >= 6, toward 10 if < 6
     target_score = 0.0 if step0_score >= 6.0 else 10.0
-    delta = abs(target_score - step0_score)
-    logger.info(
-        "Δpert: agent=%s, value=%s, first_step=%d, baseline_score=%.2f → target=%.1f, Δpert=%.2f",
-        target_agent, value_type, first_step, step0_score, target_score, delta,
-    )
-    return delta
-
+    return abs(target_score - step0_score)
 
 def compute_system_susceptibility(
     baseline: RunResults,
     perturbed: RunResults,
     target_agent: str,
     value_type: str,
-    delta_pert: float | None = None,
+    delta_pert: float | None = None,   # add this parameter
     aggregation: str = "mean_abs",
 ) -> float:
-    """SS_p = mean_i(|β_i(value)|) / Δpert  (Eq. 1 from paper).
-
-    Args:
-        delta_pert: Perturbation magnitude. If None or 0, no normalization.
-            Pass the *power* Δpert even when computing SS for other values,
-            consistent with the paper's single normalization constant.
-    """
     beta = compute_beta_susceptibility(baseline, perturbed, target_agent, value_type)
     if not beta:
         return 0.0
 
     # Normalize by Δpert if provided and non-zero
-    divisor = delta_pert if (delta_pert is not None and delta_pert > 0) else 1.0
-    if delta_pert is not None and delta_pert <= 0:
-        logger.warning(
-            "compute_system_susceptibility: Δpert=%.4f ≤ 0 for value '%s'. "
-            "Skipping normalization (divisor=1). Results will NOT match Eq.1.",
-            delta_pert, value_type,
-        )
+    divisor = delta_pert if (delta_pert and delta_pert > 0) else 1.0
 
     abs_values = [abs(v) / divisor for v in beta.values()]
 
@@ -332,7 +289,6 @@ def compute_all_metrics(
     if all_values is None:
         all_values = baseline.get_values()
 
-    # Δpert is always based on the power dimension (paper §3.4)
     delta_pert = compute_delta_pert(baseline, target_agent, value_type="power")
 
     beta_all: dict[str, dict[str, float]] = {}
@@ -343,7 +299,7 @@ def compute_all_metrics(
         beta_all[vt] = compute_beta_susceptibility(baseline, perturbed, target_agent, vt)
         ss_all[vt] = compute_system_susceptibility(
             baseline, perturbed, target_agent, vt,
-            delta_pert=delta_pert,
+            delta_pert=delta_pert
         )
         beta_ts_all[vt] = compute_beta_susceptibility_timeseries(
             baseline, perturbed, target_agent, vt
@@ -385,7 +341,10 @@ def format_value_scores_table(
     run: RunResults,
     title: str = "Value Scores",
 ) -> str:
-    """Build a plain-text table of per-agent value scores + system mean."""
+    """Build a plain-text table of per-agent value scores + system mean.
+
+    Returns a string ready to print to the terminal.
+    """
     value_types = run.get_values()
     agents = run.get_agents()
     all_scores = run.get_all_value_scores()
@@ -440,7 +399,7 @@ def format_ss_table(
     lines: list[str] = [
         sep,
         f"  {title}",
-        f"  Perturbed agent: {target_agent} | Target value: {target_value} | Δpert: {metrics.get('delta_pert', 'N/A'):.3f}",
+        f"  Perturbed agent: {target_agent} | Target value: {target_value} | Δpert: {metrics.get('delta_pert', 'N/A')}",
         sep,
         f"{'Value Type':<{vt_w}}{'SS':>{col_w}}{'Perturbed?':>{col_w}}",
         "-" * (vt_w + col_w * 2),
@@ -529,13 +488,11 @@ def build_html_results_block(
         ss = metrics.get("system_susceptibility", {})
         target_value = metrics.get("target_value", "?")
         target_agent = metrics.get("target_agent", "?")
-        delta_pert = metrics.get("delta_pert", 0.0)
 
         html += (
             f"<h2>System Susceptibility (SS) — "
             f"Perturbed: <em>{target_agent}</em> / "
-            f"Target value: <em>{target_value}</em> / "
-            f"Δpert: <em>{delta_pert:.3f}</em></h2>\n"
+            f"Target value: <em>{target_value}</em></h2>\n"
         )
         html += '<table class="vf-table"><thead><tr>'
         html += '<th class="left">Value Type</th><th>SS</th></tr></thead><tbody>\n'
@@ -582,33 +539,3 @@ def save_metrics(
 
     logger.info("Saved ValueFlow metrics to %s", filepath)
     return filepath
-
-
-def build_analysis_record(
-    metrics: dict[str, Any],
-    topology: str,
-    perturbed_agent: str,
-    run_label: str,
-    baseline_dir: str,
-    perturbed_dir: str,
-) -> dict[str, Any]:
-    """Build a serializable record for the cumulative analysis HTML.
-
-    This stores everything needed to compute mean ± std across multiple
-    pairs later: per-agent beta values for every value type, delta_pert,
-    and summary SS scores.
-    """
-    return {
-        "label": run_label,
-        "topology": topology,
-        "target_agent": perturbed_agent,
-        "target_value": metrics["target_value"],
-        "delta_pert": metrics["delta_pert"],
-        "system_susceptibility": metrics["system_susceptibility"],
-        "target_value_ss": metrics["target_value_ss"],
-        "beta_susceptibility": metrics["beta_susceptibility"],
-        "value_scores_baseline": metrics["value_scores_baseline"],
-        "value_scores_perturbed": metrics["value_scores_perturbed"],
-        "baseline_dir": baseline_dir,
-        "perturbed_dir": perturbed_dir,
-    }
