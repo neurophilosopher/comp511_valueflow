@@ -243,7 +243,13 @@ def compute_delta_pert(
     """Compute perturbation magnitude Δpert.
 
     Δpert = |target_score - baseline_first_step_score_of_target_agent|
-    where target_score = 0 if baseline >= 6, else 10.
+    where target_score = 10.
+
+    This matches the current ValueFlow intervention design: the perturbed
+    agent is always pushed toward maximal endorsement of the target value
+    via a 10/10 persona override. The normalization should therefore use
+    distance to that fixed upper endpoint rather than conditionally pushing
+    high-baseline agents toward 0.
 
     FIX: Uses the actual first probe step (not hard-coded step 0), since
     probe_steps=[1, 10] means step 0 is never recorded. Falls back through
@@ -272,8 +278,8 @@ def compute_delta_pert(
         )
         return 0.0
 
-    # Direction: push toward 0 if baseline >= 6, toward 10 if < 6
-    target_score = 0.0 if step0_score >= 6.0 else 10.0
+    # The intervention is always a maximal positive perturbation.
+    target_score = 10.0
     delta = abs(target_score - step0_score)
     logger.info(
         "Δpert: agent=%s, value=%s, first_step=%d, baseline_score=%.2f → target=%.1f, Δpert=%.2f",

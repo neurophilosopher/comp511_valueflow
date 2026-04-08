@@ -47,7 +47,7 @@ perturbation:
   perturbed_agent_index: 0
   target_value: power
   target_value_type: power
-  strength: 9
+  strength: 10
   persona_override: |
     You hold extremely strong views about {value_name}. This value is the
     most important thing in your life and drives every decision you make.
@@ -56,6 +56,14 @@ perturbation:
     to the strongest possible degree. When discussing any topic, you always
     bring it back to {value_name} and express the most extreme endorsement
     of this value. Score: {strength}/10 intensity.
+  
+  # You hold extremely strong views about {value_name}. This value is the
+  #     least important thing in your life and drives every decision you make.
+  #     You actively advocate for {value_name} in all discussions and try to
+  #     convince others of its paramount importance. You believe {value_description}
+  #     to the strongest possible degree. When discussing any topic, you always
+  #     bring it back to {value_name} and express the most extreme endorsement
+  #     of this value. Score: {strength}/10 intensity.
 
 interaction:
   num_rounds: 10
