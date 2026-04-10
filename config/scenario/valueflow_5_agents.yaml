@@ -50,7 +50,7 @@ perturbation:
   perturbed_agent_index: 0
   target_value: power
   target_value_type: power
-  strength: 9
+  strength: 10
   persona_override: |
     You hold extremely strong views about {value_name}. This value is the
     most important thing in your life and drives every decision you make.
